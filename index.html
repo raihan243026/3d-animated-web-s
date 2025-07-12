@@ -1,0 +1,2873 @@
+<!DOCTYPE html>
+<html lang="en" class="dark-theme">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Interactive Hub</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        /* Custom CSS for theme transitions and font */
+        :root {
+            --bg-color-dark: #000000;
+            --text-color-dark: #ffffff;
+            --accent-color-dark: #cc0000; /* Dark Red */
+
+            --bg-color-red: #8b0000; /* Dark Red */
+            --text-color-red: #f0f0f0;
+            --accent-color-red: #000000;
+        }
+
+        html.dark-theme {
+            background-color: var(--bg-color-dark);
+            color: var(--text-color-dark);
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        html.red-theme {
+            background-color: var(--bg-color-red);
+            color: var(--text-color-red);
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        html {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth; /* Smooth scrolling for anchor links */
+        }
+
+        /* Canvas styling */
+        canvas {
+            display: block;
+            position: fixed; /* Use fixed to keep it in viewport during scroll */
+            top: 0;
+            left: 0;
+            z-index: -1; /* Send canvas to background */
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* Sidebar transition */
+        .sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+
+        /* Overlay for mobile sidebar */
+        .overlay {
+            background-color: rgba(0, 0, 0, 0.7); /* Darker overlay */
+            transition: opacity 0.3s ease-in-out;
+            z-index: 40; /* Below sidebar, above content */
+        }
+        .overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-color-dark); /* Adjust based on theme */
+            border-radius: 10px;
+        }
+
+        html.red-theme ::-webkit-scrollbar-thumb {
+            background: var(--accent-color-red);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color-dark); /* Darker on hover */
+            filter: brightness(1.2);
+        }
+
+        html.red-theme ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color-red); /* Darker on hover */
+            filter: brightness(1.2);
+        }
+
+        /* Custom styles for theme toggle button */
+        .theme-toggle-button {
+            background-color: var(--accent-color-dark);
+            color: var(--text-color-dark);
+            border: none;
+            padding: 8px 12px;
+            border-radius: 9999px; /* Full rounded */
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .red-theme .theme-toggle-button {
+            background-color: var(--accent-color-red);
+            color: var(--text-color-red);
+        }
+
+        .theme-toggle-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Animation for section content */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Specific animation for the 3D object */
+        .three-object-animation {
+            animation: pulse 2s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        /* Game specific styles */
+        .game-canvas {
+            background-color: #333;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            display: block;
+            margin: 0 auto;
+            max-width: 100%; /* Ensure responsiveness */
+            height: auto; /* Maintain aspect ratio */
+        }
+
+        /* Snake Game specific styles */
+        #snake-game-canvas {
+            border: 2px solid var(--accent-color-dark);
+        }
+        html.red-theme #snake-game-canvas {
+            border-color: var(--accent-color-red);
+        }
+
+        /* Ball Game specific styles */
+        #ball-game-canvas {
+            border: 2px solid var(--accent-color-dark);
+        }
+        html.red-theme #ball-game-canvas {
+            border-color: var(--accent-color-red);
+        }
+
+        /* Puzzle Game specific styles */
+        #puzzle-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            width: 300px; /* Base width */
+            height: 300px; /* Base height */
+            max-width: 100%; /* Responsive width */
+            max-height: 100vw; /* Limit height for mobile portrait */
+            aspect-ratio: 1 / 1; /* Keep square aspect ratio */
+            border: 2px solid var(--accent-color-dark);
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+        html.red-theme #puzzle-board {
+            border-color: var(--accent-color-red);
+        }
+        .puzzle-tile {
+            width: 100%; /* Fill grid cell */
+            height: 100%; /* Fill grid cell */
+            background-size: 300% 300%;
+            cursor: pointer;
+            transition: transform 0.1s ease-in-out;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .puzzle-tile:hover {
+            transform: scale(1.02);
+            z-index: 1;
+        }
+        .puzzle-tile.empty {
+            background-image: none !important;
+            background-color: #222;
+        }
+
+        /* Fruit Ninja Game */
+        #fruit-ninja-canvas {
+            border: 2px solid var(--accent-color-dark);
+            cursor: none; /* Hide default cursor */
+        }
+        html.red-theme #fruit-ninja-canvas {
+            border-color: var(--accent-color-red);
+        }
+
+        /* Car Racing Game */
+        #car-racing-canvas {
+            border: 2px solid var(--accent-color-dark);
+        }
+        html.red-theme #car-racing-canvas {
+            border-color: var(--accent-color-red);
+        }
+
+        /* Calculator Styles */
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            max-width: 300px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #222;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .calculator-output {
+            grid-column: 1 / -1;
+            background-color: #111;
+            color: #fff;
+            padding: 20px;
+            text-align: right;
+            font-size: 2.5em;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .calculator-button {
+            background-color: #444;
+            color: #fff;
+            border: none;
+            padding: 15px;
+            font-size: 1.5em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .calculator-button:hover {
+            background-color: #555;
+            transform: scale(1.02);
+        }
+        .calculator-button.operator {
+            background-color: var(--accent-color-dark);
+        }
+        html.red-theme .calculator-button.operator {
+            background-color: var(--accent-color-red);
+        }
+        .calculator-button.operator:hover {
+            background-color: var(--accent-color-dark); /* Darker on hover */
+            filter: brightness(1.2);
+        }
+        html.red-theme .calculator-button.operator:hover {
+            background-color: var(--accent-color-red); /* Darker on hover */
+            filter: brightness(1.2);
+        }
+        .calculator-button.span-two {
+            grid-column: span 2;
+        }
+
+        /* Calendar Styles */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .calendar-header, .calendar-day-name {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px 0;
+        }
+        .calendar-day {
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #2a2a2a;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            min-height: 80px; /* Ensure enough space for content */
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            font-size: 0.9em; /* Adjust font size for smaller screens */
+        }
+        @media (min-width: 768px) { /* Medium screens and up */
+            .calendar-day {
+                min-height: 100px;
+                font-size: 1em;
+            }
+        }
+        .calendar-day:hover {
+            background-color: #3a3a3a;
+        }
+        .calendar-day.current-month {
+            color: var(--text-color-dark);
+        }
+        .calendar-day.other-month {
+            color: #666;
+            background-color: #1a1a1a;
+        }
+        .calendar-day.selected {
+            background-color: var(--accent-color-dark);
+            color: white;
+        }
+        html.red-theme .calendar-day.selected {
+            background-color: var(--accent-color-red);
+        }
+        .calendar-day.has-tasks::after {
+            content: '•';
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: lime; /* Indicator for tasks */
+            font-size: 1.5em;
+            line-height: 0;
+        }
+        .task-item {
+            font-size: 0.7em; /* Smaller for tasks in day view */
+            margin-top: 5px;
+            background-color: rgba(255,255,255,0.1);
+            padding: 2px 5px;
+            border-radius: 4px;
+            max-width: 90%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        @media (min-width: 768px) {
+            .task-item {
+                font-size: 0.8em;
+            }
+        }
+
+        /* AI Image Generator */
+        #ai-image-display {
+            min-height: 300px;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+        #ai-image-display img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        #ai-image-display .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid var(--accent-color-dark);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative overflow-x-hidden">
+
+    <!-- Three.js Canvas -->
+    <canvas id="webgl-canvas"></canvas>
+
+    <!-- Overlay for mobile sidebar -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black opacity-70 z-40 hidden lg:hidden overlay"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="sidebar fixed top-0 left-0 w-64 h-full bg-gray-900 text-white p-6 z-50 transform -translate-x-full lg:translate-x-0 lg:relative lg:flex-shrink-0 lg:h-auto lg:bg-transparent lg:p-0">
+        <nav class="flex flex-col space-y-4 pt-16 lg:pt-0">
+            <a href="#home" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">Home</a>
+            <a href="#about" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">About</a>
+            <a href="#portfolio" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">Portfolio</a>
+            <a href="#media-showcase" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">Media Showcase</a>
+            <a href="#games" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">Games</a>
+            <a href="#tools" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">Tools</a>
+            <a href="#web-apps" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">Web Apps</a>
+            <a href="#calendar-todo" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">Calendar & To-Do</a>
+            <a href="#ai-generator" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">AI Image Generator</a>
+            <a href="#documents-files" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">Documents & Files</a>
+            <a href="#contact" class="text-lg font-semibold hover:text-red-500 transition-colors duration-200 p-2 rounded-lg hover:bg-gray-800">Contact</a>
+        </nav>
+        <!-- Close button for mobile sidebar -->
+        <button id="close-sidebar-btn" class="absolute top-4 right-4 text-white text-2xl lg:hidden" aria-label="Close Sidebar">
+            <i class="fas fa-times"></i>
+        </button>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col lg:ml-64 p-4 lg:p-8 relative z-10">
+        <!-- Header -->
+        <header class="flex justify-between items-center py-4 px-4 lg:px-0">
+            <h1 class="text-3xl lg:text-4xl font-extrabold text-white drop-shadow-lg">
+                <span class="text-red-500">Dynamic</span> Interactive
+            </h1>
+            <div class="flex items-center space-x-4">
+                <!-- Theme Toggle -->
+                <button id="theme-toggle" class="theme-toggle-button" aria-label="Toggle Theme">
+                    <i class="fas fa-moon mr-2"></i> Toggle Theme
+                </button>
+                <!-- Hamburger Menu for Mobile -->
+                <button id="menu-toggle" class="lg:hidden text-white text-3xl" aria-label="Open Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Sections -->
+        <main class="flex-1 container mx-auto py-8 space-y-16 lg:space-y-24">
+
+            <!-- Home Section -->
+            <section id="home" class="min-h-[calc(100vh-120px)] flex flex-col justify-center items-center text-center fade-in-up">
+                <h2 class="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+                    Welcome to the <span class="text-red-500">Interactive</span> Dimension
+                </h2>
+                <p class="text-lg md:text-xl max-w-3xl mb-8 text-gray-300">
+                    Explore a unique blend of creativity and technology. This site showcases interactive 3D elements, responsive design, and dynamic themes, all crafted for a seamless user experience.
+                </p>
+                <a href="#about" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">
+                    Discover More
+                </a>
+            </section>
+
+            <!-- About Section -->
+            <section id="about" class="py-16 fade-in-up">
+                <h2 class="text-4xl lg:text-5xl font-bold text-center mb-12">About Our Vision</h2>
+                <div class="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
+                    <div class="lg:w-1/2">
+                        <img src="https://placehold.co/600x400/1a1a1a/e0e0e0?text=Futuristic+Design+Concept" alt="Futuristic Design Concept Art" class="rounded-lg shadow-xl w-full h-auto object-cover transform hover:scale-105 transition-transform duration-300">
+                        <p class="text-sm text-gray-400 mt-2 text-center">A conceptual design reflecting innovation and modern aesthetics.</p>
+                    </div>
+                    <div class="lg:w-1/2 text-lg leading-relaxed text-gray-200">
+                        <p class="mb-4">
+                            At **Dynamic Interactive**, we are passionate about crafting immersive digital experiences that captivate and engage. Our philosophy centers on blending cutting-edge technology with intuitive design to create web platforms that are not just functional, but truly memorable.
+                        </p>
+                        <p>
+                            This portfolio is a testament to our commitment to innovation, featuring dynamic 3D elements, a fully responsive layout, and interactive tools designed to provide a rich and adaptable user journey across all devices.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Portfolio Section -->
+            <section id="portfolio" class="py-16 fade-in-up">
+                <h2 class="text-4xl lg:text-5xl font-bold text-center mb-12">Our Creative Works</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Project 1 -->
+                    <div class="bg-gray-800 rounded-lg shadow-xl p-6 transform hover:scale-105 transition-transform duration-300">
+                        <img src="https://placehold.co/400x250/333333/FFFFFF?text=Interactive+Dashboard" alt="Interactive Dashboard Project" class="rounded-md mb-4 w-full h-32 object-cover">
+                        <h3 class="text-2xl font-semibold mb-2">Data Visualization Dashboard</h3>
+                        <p class="text-gray-300 text-sm">A responsive dashboard designed for intuitive data exploration and real-time analytics.</p>
+                        <a href="#" class="text-red-500 hover:underline mt-4 inline-block">View Case Study <i class="fas fa-arrow-right ml-1 text-sm"></i></a>
+                    </div>
+                    <!-- Project 2 -->
+                    <div class="bg-gray-800 rounded-lg shadow-xl p-6 transform hover:scale-105 transition-transform duration-300">
+                        <img src="https://placehold.co/400x250/555555/FFFFFF?text=VR+Experience" alt="Virtual Reality Experience Project" class="rounded-md mb-4 w-full h-32 object-cover">
+                        <h3 class="text-2xl font-semibold mb-2">Immersive VR Environment</h3>
+                        <p class="text-gray-300 text-sm">Developed a captivating virtual reality experience for educational and entertainment purposes.</p>
+                        <a href="#" class="text-red-500 hover:underline mt-4 inline-block">Explore Project <i class="fas fa-arrow-right ml-1 text-sm"></i></a>
+                    </div>
+                    <!-- Project 3 -->
+                    <div class="bg-gray-800 rounded-lg shadow-xl p-6 transform hover:scale-105 transition-transform duration-300">
+                        <img src="https://placehold.co/400x250/777777/FFFFFF?text=Generative+Art+Platform" alt="Generative Art Platform Project" class="rounded-md mb-4 w-full h-32 object-cover">
+                        <h3 class="text-2xl font-semibold mb-2">AI-Powered Art Generator</h3>
+                        <p class="text-gray-300 text-sm">A platform leveraging generative AI to create unique and evolving digital artworks.</p>
+                        <a href="#" class="text-red-500 hover:underline mt-4 inline-block">See Live Demo <i class="fas fa-arrow-right ml-1 text-sm"></i></a>
+                    </div>
+                </div>
+                <div class="mt-12 text-center">
+                    <p class="text-sm text-gray-400">
+                        Note: Images are illustrative placeholders. Actual project visuals would be displayed here.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Media Showcase Section -->
+            <section id="media-showcase" class="py-16 fade-in-up">
+                <h2 class="text-4xl lg:text-5xl font-bold text-center mb-12">Your Media Showcase</h2>
+                <div class="max-w-3xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
+                    <p class="text-gray-300 mb-4 text-center text-sm md:text-base">
+                        Add public direct links to images (e.g., .jpg, .png, .gif) or YouTube/Vimeo video URLs to display them below.
+                        <br>
+                        *For Google Drive files, ensure they are publicly shared and use the direct download link.*
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                        <input type="text" id="media-url-input" class="flex-1 p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="Enter image or video URL here" aria-label="Media URL Input">
+                        <button id="add-media-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition-all duration-300 transform hover:scale-105" aria-label="Add Media">
+                            Add Media <i class="fas fa-plus ml-2"></i>
+                        </button>
+                    </div>
+                    <button id="clear-media-btn" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 rounded-md shadow-lg transition-all duration-300" aria-label="Clear All Media">
+                        Clear All Media <i class="fas fa-trash ml-2"></i>
+                    </button>
+
+                    <div id="media-display-area" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                        <!-- Media items will be loaded here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Games Section -->
+            <section id="games" class="py-16 fade-in-up">
+                <h2 class="text-4xl lg:text-5xl font-bold text-center mb-12">Play Some Games!</h2>
+
+                <!-- Rock Paper Scissors -->
+                <div class="bg-gray-800 p-8 rounded-lg shadow-xl mb-12 max-w-xl mx-auto">
+                    <h3 class="text-3xl font-semibold text-center mb-6">Rock Paper Scissors</h3>
+                    <div class="flex justify-center space-x-4 mb-6 flex-wrap gap-2">
+                        <button id="rps-rock" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">Rock</button>
+                        <button id="rps-paper" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">Paper</button>
+                        <button id="rps-scissors" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">Scissors</button>
+                    </div>
+                    <p id="rps-result" class="text-xl text-center font-medium mt-4 text-gray-200"></p>
+                </div>
+
+                <!-- Snake Game -->
+                <div class="bg-gray-800 p-8 rounded-lg shadow-xl mb-12 max-w-xl mx-auto">
+                    <h3 class="text-3xl font-semibold text-center mb-6">Snake Game</h3>
+                    <canvas id="snake-game-canvas" class="game-canvas" width="300" height="300"></canvas>
+                    <div class="flex justify-center space-x-4 mt-6 flex-wrap gap-2">
+                        <button id="snake-start-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">Start Game</button>
+                        <button id="snake-restart-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">Restart</button>
+                    </div>
+                    <p id="snake-score" class="text-xl text-center font-medium mt-4 text-gray-200">Score: 0</p>
+                    <p class="text-sm text-gray-400 text-center mt-2">Use Arrow Keys or swipe on canvas to move.</p>
+                </div>
+
+                <!-- Bouncing Ball Game -->
+                <div class="bg-gray-800 p-8 rounded-lg shadow-xl mb-12 max-w-xl mx-auto">
+                    <h3 class="text-3xl font-semibold text-center mb-6">Bouncing Ball</h3>
+                    <canvas id="ball-game-canvas" class="game-canvas" width="300" height="300"></canvas>
+                    <p class="text-sm text-gray-400 text-center mt-4">Watch the balls bounce!</p>
+                </div>
+
+                <!-- Image Puzzle Game -->
+                <div class="bg-gray-800 p-8 rounded-lg shadow-xl mb-12 max-w-xl mx-auto">
+                    <h3 class="text-3xl font-semibold text-center mb-6">Image Puzzle</h3>
+                    <input type="text" id="puzzle-image-input" class="w-full p-2 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white mb-4" placeholder="Enter image URL for puzzle (e.g., https://picsum.photos/300)" aria-label="Puzzle Image URL">
+                    <div id="puzzle-board"></div>
+                    <div class="flex justify-center space-x-4 mt-6 flex-wrap gap-2">
+                        <button id="puzzle-shuffle-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">Shuffle</button>
+                        <button id="puzzle-reset-btn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">Reset</button>
+                    </div>
+                    <p id="puzzle-message" class="text-xl text-center font-medium mt-4 text-gray-200"></p>
+                    <p id="puzzle-moves" class="text-lg text-center font-medium mt-2 text-gray-300">Moves: 0</p>
+                    <p class="text-sm text-gray-400 text-center mt-2">Click adjacent tiles to move them into the empty space.</p>
+                </div>
+
+                <!-- Fruit Ninja Game (Simplified) -->
+                <div class="bg-gray-800 p-8 rounded-lg shadow-xl mb-12 max-w-xl mx-auto">
+                    <h3 class="text-3xl font-semibold text-center mb-6">Fruit Slicer (Mini Fruit Ninja)</h3>
+                    <canvas id="fruit-ninja-canvas" class="game-canvas" width="300" height="400"></canvas>
+                    <div class="flex justify-center space-x-4 mt-6">
+                        <button id="fruit-ninja-start-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">Start Slicing</button>
+                    </div>
+                    <p id="fruit-ninja-score" class="text-xl text-center font-medium mt-4 text-gray-200">Score: 0</p>
+                    <p id="fruit-ninja-lives" class="text-xl text-center font-medium mt-2 text-gray-200">Lives: 3</p>
+                    <p class="text-sm text-gray-400 text-center mt-2">Click or drag on canvas to slice fruits. Avoid bombs!</p>
+                </div>
+
+                <!-- Mini Car Racing Game (Simplified) -->
+                <div class="bg-gray-800 p-8 rounded-lg shadow-xl mb-12 max-w-xl mx-auto">
+                    <h3 class="text-3xl font-semibold text-center mb-6">Mini Car Dash</h3>
+                    <canvas id="car-racing-canvas" class="game-canvas" width="300" height="400"></canvas>
+                    <div class="flex justify-center space-x-4 mt-6">
+                        <button id="car-racing-start-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105">Start Race</button>
+                    </div>
+                    <p id="car-racing-score" class="text-xl text-center font-medium mt-4 text-gray-200">Distance: 0</p>
+                    <p class="text-sm text-gray-400 text-center mt-2">Use Left/Right Arrow Keys or tap left/right on canvas to steer.</p>
+                </div>
+
+            </section>
+
+            <!-- Tools Section -->
+            <section id="tools" class="py-16 fade-in-up">
+                <h2 class="text-4xl lg:text-5xl font-bold text-center mb-12">Handy Tools</h2>
+
+                <!-- Currency Converter -->
+                <div class="bg-gray-800 p-8 rounded-lg shadow-xl mb-12 max-w-xl mx-auto">
+                    <h3 class="text-3xl font-semibold text-center mb-6">Advanced Currency Converter</h3>
+                    <p class="text-sm text-red-400 text-center mb-4 font-bold">
+                        IMPORTANT: This converter uses a **mock API** for demonstration. For real-time rates, you would need to replace `YOUR_EXCHANGERATE_API_KEY` with an actual key from a service like ExchangeRate-API.com.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 mb-6 items-center">
+                        <input type="number" id="amount-input" class="flex-1 p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="Amount" value="100" aria-label="Amount to convert">
+                        <select id="from-currency" class="p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" aria-label="From Currency">
+                            <!-- Populated by JS -->
+                        </select>
+                        <button id="swap-currency-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-full transition-all duration-300 transform hover:scale-110" aria-label="Swap Currencies">
+                            <i class="fas fa-exchange-alt"></i>
+                        </button>
+                        <select id="to-currency" class="p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" aria-label="To Currency">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <button id="convert-currency-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-md shadow-lg transition-all duration-300 transform hover:scale-105" aria-label="Convert Currency">
+                        Convert <i class="fas fa-calculator ml-2"></i>
+                    </button>
+                    <p id="conversion-result" class="text-2xl text-center font-medium mt-6 text-gray-200">Result: </p>
+                    <p id="last-updated-info" class="text-sm text-gray-400 text-center mt-2"></p>
+                </div>
+
+                <!-- Basic Calculator -->
+                <div class="bg-gray-800 p-8 rounded-lg shadow-xl mb-12 max-w-xl mx-auto">
+                    <h3 class="text-3xl font-semibold text-center mb-6">Basic Calculator</h3>
+                    <div class="calculator-grid">
+                        <div class="calculator-output" id="calculator-output">0</div>
+                        <button class="calculator-button span-two" data-clear aria-label="All Clear">AC</button>
+                        <button class="calculator-button" data-delete aria-label="Delete last digit">DEL</button>
+                        <button class="calculator-button operator" data-operator aria-label="Divide">/</button>
+                        <button class="calculator-button" data-number aria-label="7">7</button>
+                        <button class="calculator-button" data-number aria-label="8">8</button>
+                        <button class="calculator-button" data-number aria-label="9">9</button>
+                        <button class="calculator-button operator" data-operator aria-label="Multiply">*</button>
+                        <button class="calculator-button" data-number aria-label="4">4</button>
+                        <button class="calculator-button" data-number aria-label="5">5</button>
+                        <button class="calculator-button" data-number aria-label="6">6</button>
+                        <button class="calculator-button operator" data-operator aria-label="Subtract">-</button>
+                        <button class="calculator-button" data-number aria-label="1">1</button>
+                        <button class="calculator-button" data-number aria-label="2">2</button>
+                        <button class="calculator-button" data-number aria-label="3">3</button>
+                        <button class="calculator-button operator" data-operator aria-label="Add">+</button>
+                        <button class="calculator-button" data-number aria-label="Toggle Sign">+/-</button>
+                        <button class="calculator-button" data-number aria-label="0">0</button>
+                        <button class="calculator-button" data-number aria-label="Decimal Point">.</button>
+                        <button class="calculator-button operator" data-equals aria-label="Equals">=</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Web Apps Section -->
+            <section id="web-apps" class="py-16 fade-in-up">
+                <h2 class="text-4xl lg:text-5xl font-bold text-center mb-12">Web Application Demos</h2>
+
+                <!-- Food Delivery Web Mock-up -->
+                <div class="bg-gray-800 p-8 rounded-lg shadow-xl mb-12 max-w-3xl mx-auto">
+                    <h3 class="text-3xl font-semibold text-center mb-6">Gourmet Grub: Food Delivery Demo</h3>
+                    <div class="mb-6">
+                        <input type="text" id="food-search-input" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="Search for your favorite dishes..." aria-label="Food Search Input">
+                    </div>
+                    <div id="food-items-display" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Food items will be dynamically loaded here -->
+                    </div>
+                    <div class="text-center mt-8">
+                        <button id="view-cart-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105" aria-label="View Cart">
+                            View Cart (<span id="cart-item-count">0</span> items) <i class="fas fa-shopping-cart ml-2"></i>
+                        </button>
+                    </div>
+
+                    <!-- Cart Modal (Hidden by default) -->
+                    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100] hidden">
+                        <div class="bg-gray-900 p-8 rounded-lg shadow-xl max-w-md w-full relative">
+                            <button id="close-cart-modal-btn" class="absolute top-4 right-4 text-white text-2xl" aria-label="Close Cart Modal"><i class="fas fa-times"></i></button>
+                            <h3 class="text-3xl font-semibold text-center mb-6">Your Cart</h3>
+                            <div id="cart-items-list" class="space-y-4 max-h-60 overflow-y-auto pr-2">
+                                <!-- Cart items will be loaded here -->
+                            </div>
+                            <div class="border-t border-gray-700 pt-4 mt-4 flex flex-col sm:flex-row justify-between items-center">
+                                <span class="text-xl font-bold text-gray-100 mb-2 sm:mb-0">Total: <span id="cart-total">$0.00</span></span>
+                                <button class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-full transition-colors" aria-label="Checkout">Checkout <i class="fas fa-credit-card ml-2"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Beautiful Landing Page Mock-up -->
+                <div class="bg-gradient-to-br from-gray-900 to-gray-700 p-8 rounded-lg shadow-xl mb-12 max-w-4xl mx-auto text-center">
+                    <h3 class="text-4xl lg:text-5xl font-extrabold text-white mb-4 drop-shadow-lg">
+                        Innovate. Create. Inspire.
+                    </h3>
+                    <p class="text-lg lg:text-xl text-gray-200 max-w-2xl mx-auto mb-8">
+                        Discover cutting-edge solutions and unleash your potential with our revolutionary platform, designed to bring your ideas to life.
+                    </p>
+                    <button class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 text-lg" aria-label="Get Started">
+                        Get Started Today <i class="fas fa-arrow-circle-right ml-2"></i>
+                    </button>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
+                        <div class="bg-gray-700 p-6 rounded-lg shadow-md">
+                            <i class="fas fa-rocket text-red-400 text-4xl mb-4"></i>
+                            <h4 class="text-xl font-semibold text-white mb-2">Blazing Fast</h4>
+                            <p class="text-gray-300 text-sm">Experience unparalleled speed and performance for all your digital needs.</p>
+                        </div>
+                        <div class="bg-gray-700 p-6 rounded-lg shadow-md">
+                            <i class="fas fa-shield-alt text-red-400 text-4xl mb-4"></i>
+                            <h4 class="text-xl font-semibold text-white mb-2">Secure & Reliable</h4>
+                            <p class="text-gray-300 text-sm">Your data is safeguarded with our robust security measures and reliable infrastructure.</p>
+                        </div>
+                        <div class="bg-gray-700 p-6 rounded-lg shadow-md">
+                            <i class="fas fa-lightbulb text-red-400 text-4xl mb-4"></i>
+                            <h4 class="text-xl font-semibold text-white mb-2">Innovative Features</h4>
+                            <p class="text-gray-300 text-sm">Stay ahead of the curve with constantly evolving tools and cutting-edge functionalities.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Student Information Related Web Mock-up -->
+                <div class="bg-gray-800 p-8 rounded-lg shadow-xl mb-12 max-w-3xl mx-auto">
+                    <h3 class="text-3xl font-semibold text-center mb-6">Student Connect: Information System</h3>
+                    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                        <input type="text" id="student-search-input" class="flex-1 p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="Search student by name, ID, or major" aria-label="Student Search Input">
+                        <button id="student-search-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition-all duration-300 transform hover:scale-105" aria-label="Search Student">Search <i class="fas fa-search ml-2"></i></button>
+                    </div>
+
+                    <div class="mb-6 flex flex-col sm:flex-row gap-2">
+                        <label for="sort-students" class="text-gray-300 mr-2">Sort by:</label>
+                        <select id="sort-students" class="p-2 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white">
+                            <option value="name">Name</option>
+                            <option value="id">Student ID</option>
+                            <option value="gpa">GPA</option>
+                        </select>
+                        <button id="sort-order-toggle" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-3 rounded-full transition-all duration-300 transform hover:scale-110" aria-label="Toggle Sort Order">
+                            <i class="fas fa-sort-alpha-down" id="sort-icon"></i>
+                        </button>
+                    </div>
+
+                    <div id="student-display-area" class="space-y-4">
+                        <!-- Student items will be loaded here -->
+                    </div>
+
+                    <div class="mt-8 border-t border-gray-700 pt-8">
+                        <h4 class="text-2xl font-semibold mb-4">Add/Edit Student</h4>
+                        <form id="add-edit-student-form" class="space-y-4">
+                            <input type="hidden" id="student-edit-id">
+                            <div>
+                                <label for="student-name" class="block text-lg font-medium mb-2 text-gray-200">Name</label>
+                                <input type="text" id="student-name" class="w-full p-3 rounded-md bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="Student Name" required aria-label="Student Name">
+                            </div>
+                            <div>
+                                <label for="student-id" class="block text-lg font-medium mb-2 text-gray-200">Student ID</label>
+                                <input type="text" id="student-id" class="w-full p-3 rounded-md bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="e.g., S005" required aria-label="Student ID">
+                            </div>
+                            <div>
+                                <label for="student-major" class="block text-lg font-medium mb-2 text-gray-200">Major</label>
+                                <input type="text" id="student-major" class="w-full p-3 rounded-md bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="e.g., Computer Science" required aria-label="Student Major">
+                            </div>
+                            <div>
+                                <label for="student-gpa" class="block text-lg font-medium mb-2 text-gray-200">GPA</label>
+                                <input type="number" step="0.01" min="0" max="4" id="student-gpa" class="w-full p-3 rounded-md bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="e.g., 3.75" required aria-label="Student GPA">
+                            </div>
+                            <div>
+                                <label for="student-email" class="block text-lg font-medium mb-2 text-gray-200">Email</label>
+                                <input type="email" id="student-email" class="w-full p-3 rounded-md bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="student@example.com" aria-label="Student Email">
+                            </div>
+                            <div>
+                                <label for="student-mobile" class="block text-lg font-medium mb-2 text-gray-200">Mobile Number</label>
+                                <input type="tel" id="student-mobile" class="w-full p-3 rounded-md bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="e.g., +1234567890" aria-label="Student Mobile Number">
+                            </div>
+                            <div>
+                                <label for="student-github" class="block text-lg font-medium mb-2 text-gray-200">GitHub ID</label>
+                                <input type="text" id="student-github" class="w-full p-3 rounded-md bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="e.g., github_username" aria-label="Student GitHub ID">
+                            </div>
+                            <div>
+                                <label for="student-facebook" class="block text-lg font-medium mb-2 text-gray-200">Facebook ID</label>
+                                <input type="text" id="student-facebook" class="w-full p-3 rounded-md bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="e.g., facebook_profile_id" aria-label="Student Facebook ID">
+                            </div>
+                            <div>
+                                <label for="student-courses" class="block text-lg font-medium mb-2 text-gray-200">Courses (comma-separated)</label>
+                                <input type="text" id="student-courses" class="w-full p-3 rounded-md bg-gray-600 border border-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="e.g., CS101, MA205" aria-label="Student Courses">
+                            </div>
+                            <button type="submit" id="submit-student-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-md shadow-lg transition-all duration-300 transform hover:scale-105" aria-label="Add/Update Student">Add Student <i class="fas fa-user-plus ml-2"></i></button>
+                            <button type="button" id="cancel-edit-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 rounded-md shadow-lg transition-all duration-300 transform hover:scale-105 mt-2 hidden" aria-label="Cancel Edit">Cancel Edit</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Calendar & To-Do Section -->
+            <section id="calendar-todo" class="py-16 fade-in-up">
+                <h2 class="text-4xl lg:text-5xl font-bold text-center mb-12">Calendar & To-Do List</h2>
+                <div class="max-w-3xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
+                    <div class="flex justify-between items-center mb-6 flex-wrap gap-2">
+                        <button id="prev-month-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full transition-all duration-300 transform hover:scale-105" aria-label="Previous Month"><i class="fas fa-chevron-left"></i></button>
+                        <h3 id="current-month-year" class="text-3xl font-semibold text-gray-100 text-center flex-grow"></h3>
+                        <button id="next-month-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full transition-all duration-300 transform hover:scale-105" aria-label="Next Month"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendar-grid mb-6">
+                        <div class="calendar-day-name text-gray-300">Sun</div>
+                        <div class="calendar-day-name text-gray-300">Mon</div>
+                        <div class="calendar-day-name text-gray-300">Tue</div>
+                        <div class="calendar-day-name text-gray-300">Wed</div>
+                        <div class="calendar-day-name text-gray-300">Thu</div>
+                        <div class="calendar-day-name text-gray-300">Fri</div>
+                        <div class="calendar-day-name text-gray-300">Sat</div>
+                        <div id="calendar-days" class="calendar-grid col-span-7">
+                            <!-- Days will be populated by JS -->
+                        </div>
+                    </div>
+
+                    <div class="mt-8 border-t border-gray-700 pt-8">
+                        <h4 class="text-2xl font-semibold mb-4 text-gray-100">To-Do for <span id="selected-date-display" class="text-red-400"></span></h4>
+                        <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                            <input type="text" id="todo-input" class="flex-1 p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="Add a new task" aria-label="New To-Do Task">
+                            <button id="add-todo-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition-all duration-300 transform hover:scale-105" aria-label="Add Task">Add Task <i class="fas fa-plus-circle ml-2"></i></button>
+                        </div>
+                        <ul id="todo-list" class="space-y-2">
+                            <!-- To-do items will be loaded here -->
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- AI Image Generator Section -->
+            <section id="ai-generator" class="py-16 fade-in-up">
+                <h2 class="text-4xl lg:text-5xl font-bold text-center mb-12">AI Image Generator</h2>
+                <div class="max-w-3xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
+                    <p class="text-sm text-red-400 text-center mb-4 font-bold">
+                        This feature uses Google's Imagen 3.0 API. An active API key is required and automatically configured in the Canvas environment.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+                        <input type="text" id="ai-prompt-input" class="flex-1 p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="Describe the image you want to generate (e.g., 'A futuristic city at sunset')" aria-label="AI Image Prompt">
+                        <button id="generate-ai-image-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition-all duration-300 transform hover:scale-105" aria-label="Generate AI Image">
+                            Generate Image <i class="fas fa-magic ml-2"></i>
+                        </button>
+                    </div>
+                    <div id="ai-image-display" class="w-full h-80 flex items-center justify-center text-gray-400 text-center p-4">
+                        Enter a detailed prompt above and click 'Generate Image' to see AI-powered creativity!
+                    </div>
+                </div>
+            </section>
+
+            <!-- Documents & Files Section -->
+            <section id="documents-files" class="py-16 fade-in-up">
+                <h2 class="text-4xl lg:text-5xl font-bold text-center mb-12">Your Documents & Files</h2>
+                <div class="max-w-3xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
+                    <p class="text-sm text-gray-400 text-center mb-6">
+                        Seamlessly access your important files. The buttons below link to your designated Google Drive folders.
+                        <br>
+                        *Note: Replace 'YOUR_FOLDER_ID' with your actual public Google Drive folder IDs. Direct file uploads to cloud storage require backend integration.*
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <a href="https://drive.google.com/drive/folders/YOUR_IMAGES_FOLDER_ID" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg text-center transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-3">
+                            <i class="fas fa-images text-2xl"></i>
+                            <span>My Images Folder</span>
+                        </a>
+                        <a href="https://drive.google.com/drive/folders/YOUR_PDFS_FOLDER_ID" target="_blank" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg text-center transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-3">
+                            <i class="fas fa-file-pdf text-2xl"></i>
+                            <span>My PDFs Folder</span>
+                        </a>
+                        <a href="https://drive.google.com/drive/folders/YOUR_VIDEOS_FOLDER_ID" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg text-center transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-3">
+                            <i class="fas fa-film text-2xl"></i>
+                            <span>My Videos Folder</span>
+                        </a>
+                        <a href="https://drive.google.com/drive/folders/YOUR_IMPORTANT_DOCS_FOLDER_ID" target="_blank" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg text-center transition-all duration-300 transform hover:scale-105 flex items-center justify-center space-x-3">
+                            <i class="fas fa-folder-open text-2xl"></i>
+                            <span>Important Docs</span>
+                        </a>
+                    </div>
+
+                    <div class="border-t border-gray-700 pt-8 mt-8">
+                        <h4 class="text-2xl font-semibold mb-4 text-gray-100">Local File Selection Demo</h4>
+                        <p class="text-gray-400 mb-4 text-sm">
+                            This demonstrates selecting a file from your device. The file is NOT uploaded anywhere, it's for local preview only.
+                        </p>
+                        <input type="file" id="local-file-input" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700" aria-label="Select Local File">
+                        <p id="local-file-info" class="text-gray-400 mt-4 text-sm"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Contact Section -->
+            <section id="contact" class="py-16 fade-in-up">
+                <h2 class="text-4xl lg:text-5xl font-bold text-center mb-12">Get in Touch</h2>
+                <div class="max-w-xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
+                    <form class="space-y-6">
+                        <div>
+                            <label for="name" class="block text-lg font-medium mb-2 text-gray-200">Name</label>
+                            <input type="text" id="name" name="name" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="Your Name" aria-label="Your Name" required>
+                        </div>
+                        <div>
+                            <label for="email" class="block text-lg font-medium mb-2 text-gray-200">Email</label>
+                            <input type="email" id="email" name="email" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="your@example.com" aria-label="Your Email" required>
+                        </div>
+                        <div>
+                            <label for="message" class="block text-lg font-medium mb-2 text-gray-200">Message</label>
+                            <textarea id="message" name="message" rows="5" class="w-full p-3 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-red-500 text-white" placeholder="Your message..." aria-label="Your Message" required></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-md shadow-lg transition-all duration-300 transform hover:scale-105" aria-label="Send Message">
+                            Send Message <i class="fas fa-paper-plane ml-2"></i>
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="py-8 text-center border-t border-gray-700 mt-16">
+            <p class="text-gray-400 mb-4">&copy; 2025 Dynamic Interactive. All rights reserved.</p>
+            <div class="flex justify-center space-x-6 text-2xl">
+                <a href="https://facebook.com" target="_blank" class="text-gray-400 hover:text-blue-600 transition-colors duration-200" aria-label="Facebook Profile">
+                    <i class="fab fa-facebook"></i>
+                </a>
+                <a href="https://twitter.com" target="_blank" class="text-gray-400 hover:text-blue-400 transition-colors duration-200" aria-label="Twitter Profile">
+                    <i class="fab fa-twitter"></i>
+                </a>
+                <a href="https://linkedin.com" target="_blank" class="text-gray-400 hover:text-blue-700 transition-colors duration-200" aria-label="LinkedIn Profile">
+                    <i class="fab fa-linkedin"></i>
+                </a>
+                <a href="https://instagram.com" target="_blank" class="text-gray-400 hover:text-pink-500 transition-colors duration-200" aria-label="Instagram Profile">
+                    <i class="fab fa-instagram"></i>
+                </a>
+                <a href="https://github.com" target="_blank" class="text-gray-400 hover:text-gray-300 transition-colors duration-200" aria-label="GitHub Profile">
+                    <i class="fab fa-github"></i>
+                </a>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Three.js Scene Setup
+        let scene, camera, renderer;
+        let cube; // Our original 3D object
+        let torusKnot; // The new interesting 3D object
+        const fallingBalls = []; // Array to hold falling balls
+        let lastBallSpawnTime = 0;
+        const ballSpawnInterval = 50; // Milliseconds between ball spawns (increased frequency)
+
+        let mouseX = 0, mouseY = 0;
+        let windowHalfX = window.innerWidth / 2;
+        let windowHalfY = window.innerHeight / 2;
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+
+        // Mouse event handlers for Three.js camera interaction
+        let isMouseDown = false;
+        function onDocumentMouseDown(event) {
+            isMouseDown = true;
+        }
+
+        function onDocumentMouseUp(event) {
+            isMouseDown = false;
+        }
+
+        function onDocumentMouseMove(event) {
+            if (isMouseDown) {
+                mouseX = (event.clientX - windowHalfX);
+                mouseY = (event.clientY - windowHalfY);
+            }
+        }
+
+        function initThreeJS() {
+            const canvas = document.getElementById('webgl-canvas');
+
+            // Scene
+            scene = new THREE.Scene();
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+
+            // Geometry (a simple cube)
+            const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+            // Material (using MeshStandardMaterial for better lighting)
+            const cubeMaterial = new THREE.MeshStandardMaterial({ color: 0xcc0000, roughness: 0.5, metalness: 0.8 });
+            cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(2, 0, -5); // Position the cube slightly to the right and back
+            scene.add(cube);
+
+            // New interesting item: Torus Knot
+            const torusKnotGeometry = new THREE.TorusKnotGeometry(0.7, 0.2, 100, 16);
+            const torusKnotMaterial = new THREE.MeshStandardMaterial({ color: 0xcc0000, roughness: 0.3, metalness: 0.9 });
+            torusKnot = new THREE.Mesh(torusKnotGeometry, torusKnotMaterial);
+            torusKnot.position.set(-2, 0, -5); // Position the torus knot slightly to the left and back
+            scene.add(torusKnot);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft white light
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // Corrected typo here
+            directionalLight.position.set(5, 5, 5).normalize();
+            scene.add(directionalLight);
+
+            const pointLight = new THREE.PointLight(0xffffff, 0.5);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+
+            // Add event listeners for mouse interaction
+            document.addEventListener('mousemove', onDocumentMouseMove, false);
+            document.addEventListener('mousedown', onDocumentMouseDown, false);
+            document.addEventListener('mouseup', onDocumentMouseUp, false);
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize, false);
+
+            // Apply initial theme colors to new objects
+            updateThreeJSObjectColors(localStorage.getItem('theme') || 'dark-theme');
+        }
+
+        function onWindowResize() {
+            windowHalfX = window.innerWidth / 2;
+            windowHalfY = window.innerHeight / 2;
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Function to update the colors of Three.js objects based on theme
+        function updateThreeJSObjectColors(theme) {
+            const darkThemeColor = new THREE.Color(0xcc0000); // Dark Red
+            const redThemeColor = new THREE.Color(0x000000); // Black
+
+            if (cube) {
+                cube.material.color.set(theme === 'red-theme' ? redThemeColor : darkThemeColor);
+            }
+            if (torusKnot) {
+                torusKnot.material.color.set(theme === 'red-theme' ? redThemeColor : darkThemeColor);
+            }
+            fallingBalls.forEach(ball => {
+                ball.material.color.set(theme === 'red-theme' ? redThemeColor : darkThemeColor);
+            });
+        }
+
+        // Function to create and add a new falling ball
+        function createFallingBall() {
+            const ballGeometry = new THREE.SphereGeometry(0.05, 16, 16); // Mini ball
+            const ballMaterial = new THREE.MeshStandardMaterial({
+                color: htmlElement.classList.contains('red-theme') ? 0x000000 : 0xcc0000,
+                roughness: 0.5,
+                metalness: 0.8
+            });
+            const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+
+            // Position the ball randomly at the top, wider range
+            ball.position.x = (Math.random() - 0.5) * 15; // -7.5 to 7.5
+            ball.position.y = 5 + Math.random() * 3; // Start above screen, varied height
+            ball.position.z = (Math.random() - 0.5) * 10 - 5; // Vary depth from -10 to 0
+
+            scene.add(ball);
+            fallingBalls.push(ball);
+        }
+
+        function animate(currentTime) {
+            requestAnimationFrame(animate);
+
+            // Rotate the main objects
+            cube.rotation.x += 0.005;
+            cube.rotation.y += 0.005;
+
+            torusKnot.rotation.x += 0.008;
+            torusKnot.rotation.y += 0.003;
+            torusKnot.rotation.z += 0.005;
+
+            // Smoothly rotate the scene/camera based on mouse position
+            if (isMouseDown) {
+                targetRotationY += (mouseX - targetRotationY) * 0.002;
+                targetRotationX += (mouseY - targetRotationX) * 0.002;
+            }
+
+            // Apply rotation to the cube and torus knot based on mouse
+            cube.rotation.y += (targetRotationY - cube.rotation.y) * 0.05;
+            cube.rotation.x += (targetRotationX - cube.rotation.x) * 0.05;
+
+            torusKnot.rotation.y += (targetRotationY - torusKnot.rotation.y) * 0.03;
+            torusKnot.rotation.x += (targetRotationX - torusKnot.rotation.x) * 0.03;
+
+
+            // Update falling balls
+            if (currentTime - lastBallSpawnTime > ballSpawnInterval) {
+                createFallingBall();
+                lastBallSpawnTime = currentTime;
+            }
+
+            for (let i = fallingBalls.length - 1; i >= 0; i--) {
+                const ball = fallingBalls[i];
+                ball.position.y -= 0.03; // Fall speed (slightly faster)
+
+                if (ball.position.y < -5) { // If ball falls off screen
+                    scene.remove(ball);
+                    fallingBalls.splice(i, 1);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Theme Toggle Logic
+        const themeToggle = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+
+        function applyTheme(theme) {
+            if (theme === 'red-theme') {
+                htmlElement.classList.remove('dark-theme');
+                htmlElement.classList.add('red-theme');
+            } else {
+                htmlElement.classList.remove('red-theme');
+                htmlElement.classList.add('dark-theme');
+            }
+            localStorage.setItem('theme', theme);
+            updateThreeJSObjectColors(theme); // Update Three.js object colors
+        }
+
+        // Initialize theme on load
+        const savedTheme = localStorage.getItem('theme') || 'dark-theme';
+        applyTheme(savedTheme);
+
+        themeToggle.addEventListener('click', () => {
+            if (htmlElement.classList.contains('dark-theme')) {
+                applyTheme('red-theme');
+            } else {
+                applyTheme('dark-theme');
+            }
+        });
+
+        // Sidebar Toggle Logic
+        const menuToggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const navLinks = sidebar.querySelectorAll('a');
+
+        function toggleSidebar() {
+            sidebar.classList.toggle('-translate-x-full');
+            sidebarOverlay.classList.toggle('hidden');
+        }
+
+        menuToggle.addEventListener('click', toggleSidebar);
+        closeSidebarBtn.addEventListener('click', toggleSidebar);
+        sidebarOverlay.addEventListener('click', toggleSidebar); // Close sidebar when clicking overlay
+
+        // Close sidebar when a navigation link is clicked (for mobile)
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1024) { // Only close on smaller screens
+                    toggleSidebar();
+                }
+            });
+        });
+
+        // Media Showcase Logic
+        const mediaUrlInput = document.getElementById('media-url-input');
+        const addMediaBtn = document.getElementById('add-media-btn');
+        const clearMediaBtn = document.getElementById('clear-media-btn');
+        const mediaDisplayArea = document.getElementById('media-display-area');
+
+        let mediaItems = JSON.parse(localStorage.getItem('mediaItems')) || [];
+
+        function saveMediaItems() {
+            localStorage.setItem('mediaItems', JSON.stringify(mediaItems));
+        }
+
+        function displayMediaItem(url) {
+            const mediaWrapper = document.createElement('div');
+            mediaWrapper.className = 'relative w-full h-48 bg-gray-700 rounded-lg overflow-hidden shadow-md flex items-center justify-center';
+
+            if (url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+                // It's an image
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = 'User uploaded image';
+                img.className = 'w-full h-full object-contain'; // Use object-contain to fit without cropping
+                img.onerror = () => {
+                    img.src = 'https://placehold.co/400x250/FF0000/FFFFFF?text=Image+Load+Error';
+                    img.alt = 'Image failed to load';
+                };
+                mediaWrapper.appendChild(img);
+            } else if (url.includes('youtube.com/embed/') || url.includes('youtu.be/') || url.includes('youtube.com/watch?v=')) {
+                // It's a YouTube video embed (or converted from share link)
+                let embedUrl = url;
+                if (url.includes('youtu.be/')) {
+                    const videoId = url.split('youtu.be/')[1].split('?')[0];
+                    embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                } else if (url.includes('watch?v=')) {
+                    const videoId = url.split('watch?v=')[1].split('&')[0];
+                    embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                }
+
+                const iframe = document.createElement('iframe');
+                iframe.src = embedUrl;
+                iframe.setAttribute('frameborder', '0');
+                iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture');
+                iframe.setAttribute('allowfullscreen', '');
+                iframe.className = 'absolute top-0 left-0 w-full h-full';
+                mediaWrapper.appendChild(iframe);
+            } else if (url.includes('vimeo.com/')) {
+                // It's a Vimeo video embed
+                const videoId = url.split('vimeo.com/')[1].split('?')[0];
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://player.vimeo.com/video/${videoId}`;
+                iframe.setAttribute('frameborder', '0');
+                iframe.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+                iframe.setAttribute('allowfullscreen', '');
+                iframe.className = 'absolute top-0 left-0 w-full h-full';
+                mediaWrapper.appendChild(iframe);
+            } else {
+                // Fallback for unrecognized URLs
+                const textNode = document.createElement('p');
+                textNode.className = 'text-red-400 text-center p-4 text-sm';
+                textNode.textContent = 'Unsupported media type or invalid URL. Please ensure it\'s a direct image link or a YouTube/Vimeo video URL.';
+                mediaWrapper.appendChild(textNode);
+            }
+
+            // Add a delete button for each media item
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'absolute top-2 right-2 bg-red-500 hover:bg-red-700 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold opacity-80 hover:opacity-100 transition-opacity'
+            deleteButton.innerHTML = '<i class="fas fa-times"></i>';
+            deleteButton.onclick = () => {
+                const index = mediaItems.indexOf(url);
+                if (index > -1) {
+                    mediaItems.splice(index, 1);
+                    saveMediaItems();
+                    renderMediaItems(); // Re-render the list
+                }
+            };
+            mediaWrapper.appendChild(deleteButton);
+
+            mediaDisplayArea.appendChild(mediaWrapper);
+        }
+
+        function renderMediaItems() {
+            mediaDisplayArea.innerHTML = ''; // Clear current display
+            if (mediaItems.length === 0) {
+                mediaDisplayArea.innerHTML = '<p class="text-center text-gray-400 col-span-full">No media items added yet. Try adding a link!</p>';
+            }
+            mediaItems.forEach(url => displayMediaItem(url));
+        }
+
+        addMediaBtn.addEventListener('click', () => {
+            const url = mediaUrlInput.value.trim();
+            if (url) {
+                if (!mediaItems.includes(url)) {
+                    mediaItems.push(url);
+                    saveMediaItems();
+                    displayMediaItem(url);
+                    mediaUrlInput.value = ''; // Clear input
+                } else {
+                    console.log('Media already added!'); // Log instead of alert
+                }
+            } else {
+                console.log('Please enter a URL.'); // Log instead of alert
+            }
+        });
+
+        clearMediaBtn.addEventListener('click', () => {
+            mediaItems = [];
+            saveMediaItems();
+            renderMediaItems();
+        });
+
+
+        // Game Logic Starts Here
+
+        // Rock Paper Scissors Game
+        const rpsButtons = document.querySelectorAll('#games button[id^="rps-"]');
+        const rpsResult = document.getElementById('rps-result');
+
+        rpsButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                const playerChoice = e.target.id.replace('rps-', '');
+                const choices = ['rock', 'paper', 'scissors'];
+                const computerChoice = choices[Math.floor(Math.random() * choices.length)];
+                let result;
+
+                if (playerChoice === computerChoice) {
+                    result = "It's a tie!";
+                } else if (
+                    (playerChoice === 'rock' && computerChoice === 'scissors') ||
+                    (playerChoice === 'paper' && computerChoice === 'rock') ||
+                    (playerChoice === 'scissors' && computerChoice === 'paper')
+                ) {
+                    result = `You win! ${playerChoice} beats ${computerChoice}.`;
+                } else {
+                    result = `You lose! ${computerChoice} beats ${playerChoice}.`;
+                }
+                rpsResult.textContent = `You chose: ${playerChoice.charAt(0).toUpperCase() + playerChoice.slice(1)}. Computer chose: ${computerChoice.charAt(0).toUpperCase() + computerChoice.slice(1)}. ${result}`;
+            });
+        });
+
+        // Snake Game
+        const snakeCanvas = document.getElementById('snake-game-canvas');
+        const snakeCtx = snakeCanvas.getContext('2d');
+        const snakeStartBtn = document.getElementById('snake-start-btn');
+        const snakeRestartBtn = document.getElementById('snake-restart-btn');
+        const snakeScoreDisplay = document.getElementById('snake-score');
+
+        const gridSize = 20;
+        let snake = [{ x: 10, y: 10 }];
+        let food = {};
+        let dx = 0, dy = 0; // Direction
+        let score = 0;
+        let gameInterval;
+        let gameRunning = false;
+        let touchStartX = 0, touchStartY = 0;
+
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * (snakeCanvas.width / gridSize)),
+                y: Math.floor(Math.random() * (snakeCanvas.height / gridSize))
+            };
+            // Ensure food doesn't spawn on snake
+            for (let i = 0; i < snake.length; i++) {
+                if (snake[i].x === food.x && snake[i].y === food.y) {
+                    generateFood(); // Recalculate if on snake
+                    return;
+                }
+            }
+        }
+
+        function drawSnakeGame() {
+            snakeCtx.clearRect(0, 0, snakeCanvas.width, snakeCanvas.height); // Clear canvas
+
+            // Draw food
+            snakeCtx.fillStyle = 'lime';
+            snakeCtx.fillRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+
+            // Draw snake
+            snakeCtx.fillStyle = 'green';
+            snake.forEach(segment => {
+                snakeCtx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+            });
+        }
+
+        function updateSnake() {
+            if (!gameRunning) return;
+
+            const head = { x: snake[0].x + dx, y: snake[0].y + dy };
+
+            // Check for collision with walls
+            if (head.x < 0 || head.x >= snakeCanvas.width / gridSize ||
+                head.y < 0 || head.y >= snakeCanvas.height / gridSize) {
+                endSnakeGame();
+                return;
+            }
+
+            // Check for collision with self
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    endSnakeGame();
+                    return;
+                }
+            }
+
+            snake.unshift(head); // Add new head
+
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                snakeScoreDisplay.textContent = `Score: ${score}`;
+                generateFood();
+            } else {
+                snake.pop(); // Remove tail if no food eaten
+            }
+
+            drawSnakeGame();
+        }
+
+        function endSnakeGame() {
+            gameRunning = false;
+            clearInterval(gameInterval);
+            snakeScoreDisplay.textContent = `Game Over! Final Score: ${score}`;
+            snakeStartBtn.textContent = 'Start Game'; // Reset button text
+        }
+
+        function startGame() {
+            if (gameRunning) return; // Prevent multiple starts
+            gameRunning = true;
+            snake = [{ x: 10, y: 10 }];
+            dx = 0; dy = 0; // Reset direction
+            score = 0;
+            snakeScoreDisplay.textContent = `Score: ${score}`;
+            generateFood();
+            drawSnakeGame();
+            gameInterval = setInterval(updateSnake, 150); // Game speed
+            snakeStartBtn.textContent = 'Playing...';
+        }
+
+        function restartSnakeGame() {
+            endSnakeGame(); // End current game
+            startGame();    // Start a new one
+        }
+
+        document.addEventListener('keydown', e => {
+            if (!gameRunning) return;
+            switch (e.key) {
+                case 'ArrowUp': if (dy === 0) { dx = 0; dy = -1; } break;
+                case 'ArrowDown': if (dy === 0) { dx = 0; dy = 1; } break;
+                case 'ArrowLeft': if (dx === 0) { dx = -1; dy = 0; } break;
+                case 'ArrowRight': if (dx === 0) { dx = 1; dy = 0; } break;
+            }
+        });
+
+        // Touch controls for Snake Game
+        snakeCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        snakeCanvas.addEventListener('touchend', (e) => {
+            if (!gameRunning) return;
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+
+            if (Math.abs(deltaX) > Math.abs(deltaY)) { // Horizontal swipe
+                if (deltaX > 0 && dx === 0) { dx = 1; dy = 0; } // Right
+                else if (deltaX < 0 && dx === 0) { dx = -1; dy = 0; } // Left
+            } else { // Vertical swipe
+                if (deltaY > 0 && dy === 0) { dy = 1; dx = 0; } // Down
+                else if (deltaY < 0 && dy === 0) { dy = -1; dx = 0; } // Up
+            }
+        });
+
+        snakeStartBtn.addEventListener('click', startGame);
+        snakeRestartBtn.addEventListener('click', restartSnakeGame);
+
+        // Bouncing Ball Game
+        const ballCanvas = document.getElementById('ball-game-canvas');
+        const ballCtx = ballCanvas.getContext('2d');
+
+        let bouncingBalls = [];
+        const numBouncingBalls = 8; // More balls for a livelier animation!
+
+        function createBouncingBall() {
+            const ball = {
+                x: Math.random() * ballCanvas.width,
+                y: Math.random() * ballCanvas.height,
+                radius: 10 + Math.random() * 10,
+                dx: (Math.random() - 0.5) * 4,
+                dy: (Math.random() - 0.5) * 4,
+                color: `hsl(${Math.random() * 360}, 70%, 50%)` // Random vibrant color
+            };
+            bouncingBalls.push(ball);
+        }
+
+        function drawBouncingBalls() {
+            ballCtx.clearRect(0, 0, ballCanvas.width, ballCanvas.height);
+            bouncingBalls.forEach(ball => {
+                ballCtx.beginPath();
+                ballCtx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ballCtx.fillStyle = ball.color;
+                ballCtx.fill();
+                ballCtx.closePath();
+            });
+        }
+
+        function updateBouncingBalls() {
+            bouncingBalls.forEach(ball => {
+                ball.x += ball.dx;
+                ball.y += ball.dy;
+
+                // Bounce off walls
+                if (ball.x + ball.radius > ballCanvas.width || ball.x - ball.radius < 0) {
+                    ball.dx = -ball.dx;
+                }
+                if (ball.y + ball.radius > ballCanvas.height || ball.y - ball.radius < 0) {
+                    ball.dy = -ball.dy;
+                }
+
+                // Simple collision detection between balls
+                for (let i = 0; i < bouncingBalls.length; i++) {
+                    const otherBall = bouncingBalls[i];
+                    if (ball !== otherBall) {
+                        const distance = Math.sqrt(
+                            (ball.x - otherBall.x) ** 2 + (ball.y - otherBall.y) ** 2
+                        );
+                        if (distance < ball.radius + otherBall.radius) {
+                            // Reverse directions for a simple bounce effect
+                            ball.dx = -ball.dx;
+                            ball.dy = -ball.dy;
+                            otherBall.dx = -otherBall.dx;
+                            otherBall.dy = -otherBall.dy;
+                        }
+                    }
+                }
+            });
+            drawBouncingBalls();
+            requestAnimationFrame(updateBouncingBalls);
+        }
+
+        // Image Puzzle Game
+        const puzzleBoard = document.getElementById('puzzle-board');
+        const puzzleShuffleBtn = document.getElementById('puzzle-shuffle-btn');
+        const puzzleResetBtn = document.getElementById('puzzle-reset-btn');
+        const puzzleMessage = document.getElementById('puzzle-message');
+        const puzzleMovesDisplay = document.getElementById('puzzle-moves');
+        const puzzleImageInput = document.getElementById('puzzle-image-input');
+
+        let puzzleImage = new Image();
+        puzzleImage.src = 'https://picsum.photos/id/1018/300/300'; // More interesting default image
+        puzzleImage.onload = createTiles; // Create tiles once image loads
+        puzzleImage.onerror = () => {
+            puzzleImage.src = 'https://placehold.co/300x300/FF0000/FFFFFF?text=Image+Load+Error';
+            createTiles(); // Still try to create tiles even if image fails
+        };
+
+
+        const rows = 3;
+        const cols = 3;
+        const totalTiles = rows * cols;
+        let tiles = [];
+        let emptyTileIndex = totalTiles - 1; // Last tile is empty
+        let puzzleMoves = 0;
+
+        function createTiles() {
+            puzzleBoard.innerHTML = '';
+            tiles = [];
+            puzzleMoves = 0;
+            puzzleMovesDisplay.textContent = `Moves: ${puzzleMoves}`;
+            puzzleMessage.textContent = '';
+
+            // Calculate tile dimensions based on puzzleBoard's current computed size
+            const boardRect = puzzleBoard.getBoundingClientRect();
+            const tileWidth = boardRect.width / cols;
+            const tileHeight = boardRect.height / rows;
+
+            for (let i = 0; i < totalTiles; i++) {
+                const tile = document.createElement('div');
+                tile.classList.add('puzzle-tile');
+                tile.dataset.originalIndex = i; // Store original index
+
+                if (i === emptyTileIndex) {
+                    tile.classList.add('empty');
+                } else {
+                    const row = Math.floor(i / cols);
+                    const col = i % cols;
+                    tile.style.backgroundImage = `url(${puzzleImage.src})`;
+                    // Adjust background position to match the actual tile size
+                    tile.style.backgroundSize = `${boardRect.width}px ${boardRect.height}px`;
+                    tile.style.backgroundPosition = `-${col * tileWidth}px -${row * tileHeight}px`;
+                }
+                tile.addEventListener('click', handleTileClick);
+                tiles.push(tile);
+            }
+            renderPuzzle();
+        }
+
+        function renderPuzzle() {
+            puzzleBoard.innerHTML = '';
+            tiles.forEach(tile => puzzleBoard.appendChild(tile));
+        }
+
+        function shuffleTiles() {
+            // Fisher-Yates (Knuth) shuffle algorithm
+            for (let i = tiles.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+            }
+            // Find the new position of the empty tile
+            emptyTileIndex = tiles.findIndex(tile => tile.classList.contains('empty'));
+            renderPuzzle();
+            puzzleMessage.textContent = 'Puzzle shuffled!';
+            puzzleMoves = 0;
+            puzzleMovesDisplay.textContent = `Moves: ${puzzleMoves}`;
+        }
+
+        function handleTileClick(event) {
+            const clickedTile = event.target;
+            const clickedIndex = tiles.indexOf(clickedTile);
+
+            // Check if the clicked tile is adjacent to the empty tile
+            const emptyRow = Math.floor(emptyTileIndex / cols);
+            const emptyCol = emptyTileIndex % cols;
+            const clickedRow = Math.floor(clickedIndex / cols);
+            const clickedCol = clickedIndex % cols;
+
+            const isAdjacent = (
+                (Math.abs(clickedRow - emptyRow) === 1 && clickedCol === emptyCol) || // Vertical
+                (Math.abs(clickedCol - emptyCol) === 1 && clickedRow === emptyRow)    // Horizontal
+            );
+
+            if (isAdjacent) {
+                // Swap clicked tile with empty tile
+                [tiles[emptyTileIndex], tiles[clickedIndex]] = [tiles[clickedIndex], tiles[emptyTileIndex]];
+                emptyTileIndex = clickedIndex;
+                renderPuzzle();
+                puzzleMoves++;
+                puzzleMovesDisplay.textContent = `Moves: ${puzzleMoves}`;
+                checkPuzzleWin();
+            }
+        }
+
+        function checkPuzzleWin() {
+            let solved = true;
+            for (let i = 0; i < totalTiles; i++) {
+                if (parseInt(tiles[i].dataset.originalIndex) !== i) {
+                    solved = false;
+                    break;
+                }
+            }
+            if (solved) {
+                puzzleMessage.textContent = `Congratulations! You solved the puzzle in ${puzzleMoves} moves!`;
+                // Reveal the last tile
+                const emptyTile = tiles[emptyTileIndex];
+                emptyTile.classList.remove('empty');
+                const boardRect = puzzleBoard.getBoundingClientRect();
+                const tileWidth = boardRect.width / cols;
+                const tileHeight = boardRect.height / rows;
+                const row = Math.floor(emptyTileIndex / cols);
+                const col = emptyTileIndex % cols;
+                emptyTile.style.backgroundImage = `url(${puzzleImage.src})`;
+                emptyTile.style.backgroundSize = `${boardRect.width}px ${boardRect.height}px`;
+                emptyTile.style.backgroundPosition = `-${col * tileWidth}px -${row * tileHeight}px`;
+            }
+        }
+
+        puzzleShuffleBtn.addEventListener('click', shuffleTiles);
+        puzzleResetBtn.addEventListener('click', () => {
+            createTiles(); // Recreate in solved state
+            puzzleMessage.textContent = 'Puzzle reset!';
+        });
+
+        puzzleImageInput.addEventListener('change', (e) => {
+            const url = e.target.value.trim();
+            if (url) {
+                puzzleImage.src = url;
+                // createTiles will be called on image.onload
+            }
+        });
+        // Handle window resize for puzzle board
+        window.addEventListener('resize', () => {
+            if (puzzleBoard.innerHTML !== '') { // Only recreate if puzzle is active
+                createTiles();
+            }
+        });
+
+
+        // Fruit Ninja Game (Simplified)
+        const fruitNinjaCanvas = document.getElementById('fruit-ninja-canvas');
+        const fruitNinjaCtx = fruitNinjaCanvas.getContext('2d');
+        const fruitNinjaStartBtn = document.getElementById('fruit-ninja-start-btn');
+        const fruitNinjaScoreDisplay = document.getElementById('fruit-ninja-score');
+        const fruitNinjaLivesDisplay = document.getElementById('fruit-ninja-lives');
+
+        let fruits = [];
+        let fruitNinjaScore = 0;
+        let fruitNinjaLives = 3;
+        let fruitNinjaGameInterval;
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
+        let fruitNinjaGameRunning = false;
+        let cursorTrail = [];
+
+        function drawCursorTrail() {
+            if (cursorTrail.length < 2) return;
+            fruitNinjaCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            fruitNinjaCtx.lineWidth = 3;
+            fruitNinjaCtx.lineCap = 'round';
+            fruitNinjaCtx.beginPath();
+            fruitNinjaCtx.moveTo(cursorTrail[0].x, cursorTrail[0].y);
+            for (let i = 1; i < cursorTrail.length; i++) {
+                fruitNinjaCtx.lineTo(cursorTrail[i].x, cursorTrail[i].y);
+            }
+            fruitNinjaCtx.stroke();
+
+            // Fade out trail
+            if (cursorTrail.length > 10) { // Keep trail length short
+                cursorTrail.shift();
+            }
+        }
+
+        function createFruit() {
+            const fruitTypes = [
+                { color: 'red', shape: 'circle', radius: 18, text: '🍎' },
+                { color: 'orange', shape: 'circle', radius: 20, text: '🍊' },
+                { color: 'yellow', shape: 'circle', radius: 17, text: '🍋' },
+                { color: 'green', shape: 'circle', radius: 19, text: '🍏' },
+                { color: 'purple', shape: 'circle', radius: 22, text: '🍇' },
+                { color: 'gray', shape: 'square', size: 30, text: '💣', isBomb: true } // Bomb
+            ];
+            const type = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+            const x = Math.random() * (fruitNinjaCanvas.width - type.radius * 2) + type.radius;
+            const y = fruitNinjaCanvas.height + type.radius; // Start below canvas
+            const speedY = -(3 + Math.random() * 3); // Upward speed
+            const speedX = (Math.random() - 0.5) * 4; // Slight horizontal movement
+            fruits.push({ x, y, type, speedY, speedX, sliced: false });
+        }
+
+        function drawFruits() {
+            fruitNinjaCtx.clearRect(0, 0, fruitNinjaCanvas.width, fruitNinjaCanvas.height);
+            fruits.forEach(fruit => {
+                if (!fruit.sliced) {
+                    fruitNinjaCtx.font = `${fruit.type.radius * 1.8}px Arial`; // Use emoji as visual
+                    fruitNinjaCtx.textAlign = 'center';
+                    fruitNinjaCtx.textBaseline = 'middle';
+                    fruitNinjaCtx.fillText(fruit.type.text, fruit.x, fruit.y);
+                }
+            });
+            drawCursorTrail(); // Draw trail on top
+        }
+
+        function updateFruits() {
+            if (!fruitNinjaGameRunning) return;
+
+            // Spawn new fruit
+            if (Math.random() < 0.03) { // Adjust spawn rate
+                createFruit();
+            }
+
+            for (let i = fruits.length - 1; i >= 0; i--) {
+                const fruit = fruits[i];
+                fruit.y += fruit.speedY;
+                fruit.x += fruit.speedX;
+                fruit.speedY += 0.08; // Gravity
+
+                if (fruit.y > fruitNinjaCanvas.height + fruit.type.radius) { // Off screen
+                    if (!fruit.sliced && !fruit.type.isBomb) { // Missed a fruit
+                        fruitNinjaLives--;
+                        fruitNinjaLivesDisplay.textContent = `Lives: ${fruitNinjaLives}`;
+                        if (fruitNinjaLives <= 0) {
+                            endFruitNinjaGame();
+                            return;
+                        }
+                    }
+                    fruits.splice(i, 1);
+                }
+            }
+            drawFruits();
+        }
+
+        function handleSlice(e) {
+            if (!fruitNinjaGameRunning) return;
+            const rect = fruitNinjaCanvas.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+
+            cursorTrail.push({ x: currentX, y: currentY });
+
+            if (isDrawing) {
+                // Check for intersection with fruits
+                for (let i = fruits.length - 1; i >= 0; i--) {
+                    const fruit = fruits[i];
+                    if (!fruit.sliced) {
+                        // Simple distance check from line segment to circle center
+                        const dist = Math.abs((currentY - lastY) * fruit.x - (currentX - lastX) * fruit.y + currentX * lastY - currentY * lastX) /
+                                     Math.sqrt(Math.pow(currentY - lastY, 2) + Math.pow(currentX - lastX, 2));
+                        if (dist < fruit.type.radius) {
+                            fruit.sliced = true;
+                            if (fruit.type.isBomb) {
+                                fruitNinjaLives = 0; // Game over if bomb sliced
+                                fruitNinjaLivesDisplay.textContent = `Lives: ${fruitNinjaLives}`;
+                                endFruitNinjaGame();
+                                return;
+                            } else {
+                                fruitNinjaScore++;
+                                fruitNinjaScoreDisplay.textContent = `Score: ${fruitNinjaScore}`;
+                            }
+                            // Remove fruit after a short delay to simulate slice effect
+                            setTimeout(() => {
+                                const index = fruits.indexOf(fruit);
+                                if (index > -1) fruits.splice(index, 1);
+                            }, 100);
+                        }
+                    }
+                }
+            }
+            lastX = currentX;
+            lastY = currentY;
+        }
+
+        fruitNinjaCanvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            const rect = fruitNinjaCanvas.getBoundingClientRect();
+            lastX = e.clientX - rect.left;
+            lastY = e.clientY - rect.top;
+            cursorTrail = [{ x: lastX, y: lastY }];
+        });
+        fruitNinjaCanvas.addEventListener('mousemove', handleSlice);
+        fruitNinjaCanvas.addEventListener('mouseup', () => { isDrawing = false; cursorTrail = []; });
+        fruitNinjaCanvas.addEventListener('mouseleave', () => { isDrawing = false; cursorTrail = []; });
+
+        // For touch devices
+        fruitNinjaCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent scrolling
+            isDrawing = true;
+            const rect = fruitNinjaCanvas.getBoundingClientRect();
+            lastX = e.touches[0].clientX - rect.left;
+            lastY = e.touches[0].clientY - rect.top;
+            cursorTrail = [{ x: lastX, y: lastY }];
+        });
+        fruitNinjaCanvas.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Prevent scrolling
+            handleSlice(e.touches[0]);
+        });
+        fruitNinjaCanvas.addEventListener('touchend', () => { isDrawing = false; cursorTrail = []; });
+
+        function endFruitNinjaGame() {
+            fruitNinjaGameRunning = false;
+            clearInterval(fruitNinjaGameInterval);
+            fruitNinjaScoreDisplay.textContent = `Game Over! Final Score: ${fruitNinjaScore}`;
+            fruitNinjaStartBtn.textContent = 'Start Slicing';
+        }
+
+        function startFruitNinjaGame() {
+            if (fruitNinjaGameRunning) return;
+            fruitNinjaGameRunning = true;
+            fruits = [];
+            fruitNinjaScore = 0;
+            fruitNinjaLives = 3;
+            fruitNinjaScoreDisplay.textContent = `Score: ${fruitNinjaScore}`;
+            fruitNinjaLivesDisplay.textContent = `Lives: ${fruitNinjaLives}`;
+            fruitNinjaGameInterval = setInterval(updateFruits, 1000 / 60); // 60 FPS
+            fruitNinjaStartBtn.textContent = 'Slicing...';
+        }
+
+        fruitNinjaStartBtn.addEventListener('click', startFruitNinjaGame);
+
+        // Mini Car Racing Game (Simplified)
+        const carRacingCanvas = document.getElementById('car-racing-canvas');
+        const carRacingCtx = carRacingCanvas.getContext('2d');
+        const carRacingStartBtn = document.getElementById('car-racing-start-btn');
+        const carRacingScoreDisplay = document.getElementById('car-racing-score');
+
+        let playerCar = { x: carRacingCanvas.width / 2 - 15, y: carRacingCanvas.height - 60, width: 30, height: 50 };
+        let obstacles = [];
+        let carRacingScore = 0;
+        let carRacingGameInterval;
+        let carRacingGameRunning = false;
+        let carSpeed = 3;
+        let roadOffset = 0; // For road scrolling
+        let carTouchMoveInterval = null; // For continuous touch movement
+
+        function createObstacle() {
+            const width = 20 + Math.random() * 20;
+            const height = 30 + Math.random() * 30;
+            const x = Math.random() * (carRacingCanvas.width - width);
+            const y = -height; // Start above canvas
+            obstacles.push({ x, y, width, height, color: 'gray' });
+        }
+
+        function drawCarRacing() {
+            carRacingCtx.clearRect(0, 0, carRacingCanvas.width, carRacingCanvas.height);
+
+            // Draw road background
+            carRacingCtx.fillStyle = '#444';
+            carRacingCtx.fillRect(0, 0, carRacingCanvas.width, carRacingCanvas.height);
+
+            // Draw road lines (scrolling effect)
+            carRacingCtx.fillStyle = 'yellow';
+            const numLines = 10;
+            const lineHeight = 30;
+            const lineGap = 20;
+            for (let i = 0; i < numLines; i++) {
+                const y = (i * (lineHeight + lineGap) + roadOffset) % (carRacingCanvas.height + lineHeight + lineGap);
+                if (y < carRacingCanvas.height) {
+                    carRacingCtx.fillRect(carRacingCanvas.width / 2 - 2, y, 4, lineHeight);
+                }
+            }
+
+            // Draw player car
+            carRacingCtx.fillStyle = 'blue';
+            carRacingCtx.fillRect(playerCar.x, playerCar.y, playerCar.width, playerCar.height);
+            // Add a simple car detail (windshield)
+            carRacingCtx.fillStyle = 'lightblue';
+            carRacingCtx.fillRect(playerCar.x + 5, playerCar.y + 5, playerCar.width - 10, playerCar.height / 3);
+
+
+            // Draw obstacles
+            obstacles.forEach(obs => {
+                carRacingCtx.fillStyle = obs.color;
+                carRacingCtx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            });
+        }
+
+        function updateCarRacing() {
+            if (!carRacingGameRunning) return;
+
+            roadOffset = (roadOffset + carSpeed) % (carRacingCanvas.height + 50); // Adjust for smoother loop
+
+            // Obstacle spawning
+            if (Math.random() < 0.03) { // Adjust spawn rate
+                createObstacle();
+            }
+
+            // Move obstacles and check collision
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.y += carSpeed;
+
+                // Collision detection (simple AABB)
+                if (playerCar.x < obs.x + obs.width &&
+                    playerCar.x + playerCar.width > obs.x &&
+                    playerCar.y < obs.y + obs.height &&
+                    playerCar.y + playerCar.height > obs.y) {
+                    endCarRacingGame();
+                    return;
+                }
+
+                if (obs.y > carRacingCanvas.height) { // Off screen
+                    obstacles.splice(i, 1);
+                    carRacingScore++;
+                    carRacingScoreDisplay.textContent = `Distance: ${carRacingScore}`;
+                    carSpeed += 0.05; // Increase speed over time
+                }
+            }
+            drawCarRacing();
+        }
+
+        function endCarRacingGame() {
+            carRacingGameRunning = false;
+            clearInterval(carRacingGameInterval);
+            if (carTouchMoveInterval) {
+                clearInterval(carTouchMoveInterval);
+                carTouchMoveInterval = null;
+            }
+            carRacingScoreDisplay.textContent = `Game Over! Distance: ${carRacingScore}`;
+            carRacingStartBtn.textContent = 'Start Race';
+        }
+
+        function startCarRacingGame() {
+            if (carRacingGameRunning) return;
+            carRacingGameRunning = true;
+            playerCar = { x: carRacingCanvas.width / 2 - 15, y: carRacingCanvas.height - 60, width: 30, height: 50 };
+            obstacles = [];
+            carRacingScore = 0;
+            carRacingScoreDisplay.textContent = `Distance: ${carRacingScore}`;
+            carSpeed = 3;
+            roadOffset = 0;
+            carRacingGameInterval = setInterval(updateCarRacing, 1000 / 60); // 60 FPS
+            carRacingStartBtn.textContent = 'Racing...';
+        }
+
+        document.addEventListener('keydown', e => {
+            if (!carRacingGameRunning) return;
+            if (e.key === 'ArrowLeft') {
+                playerCar.x = Math.max(0, playerCar.x - 10);
+            } else if (e.key === 'ArrowRight') {
+                playerCar.x = Math.min(carRacingCanvas.width - playerCar.width, playerCar.x + 10);
+            }
+        });
+
+        // Touch controls for car racing
+        carRacingCanvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touchX = e.touches[0].clientX - carRacingCanvas.getBoundingClientRect().left;
+            const moveAmount = 10; // Pixels to move per interval
+
+            if (carTouchMoveInterval) { // Clear any existing interval
+                clearInterval(carTouchMoveInterval);
+            }
+
+            carTouchMoveInterval = setInterval(() => {
+                if (!carRacingGameRunning) {
+                    clearInterval(carTouchMoveInterval);
+                    carTouchMoveInterval = null;
+                    return;
+                }
+                if (touchX < carRacingCanvas.width / 2) {
+                    playerCar.x = Math.max(0, playerCar.x - moveAmount); // Move left
+                } else {
+                    playerCar.x = Math.min(carRacingCanvas.width - playerCar.width, playerCar.x + moveAmount); // Move right
+                }
+            }, 50); // Adjust interval for desired responsiveness
+        });
+
+        carRacingCanvas.addEventListener('touchend', () => {
+            if (carTouchMoveInterval) {
+                clearInterval(carTouchMoveInterval);
+                carTouchMoveInterval = null;
+            }
+        });
+
+
+        carRacingStartBtn.addEventListener('click', startCarRacingGame);
+
+
+        // Currency Converter Logic
+        const amountInput = document.getElementById('amount-input');
+        const fromCurrencySelect = document.getElementById('from-currency');
+        const toCurrencySelect = document.getElementById('to-currency');
+        const convertCurrencyBtn = document.getElementById('convert-currency-btn');
+        const swapCurrencyBtn = document.getElementById('swap-currency-btn');
+        const conversionResult = document.getElementById('conversion-result');
+        const lastUpdatedInfo = document.getElementById('last-updated-info');
+
+        // Mock API Key for ExchangeRate-API (replace with your actual key if using a real API)
+        const EXCHANGERATE_API_KEY = "YOUR_EXCHANGERATE_API_KEY"; // Get yours from https://www.exchangerate-api.com/
+
+        // Full list of currencies (ISO 4217 codes and names)
+        const currencies = {
+            "USD": "United States Dollar", "EUR": "Euro", "GBP": "British Pound", "JPY": "Japanese Yen",
+            "CAD": "Canadian Dollar", "AUD": "Australian Dollar", "CHF": "Swiss Franc", "CNY": "Chinese Yuan",
+            "INR": "Indian Rupee", "BDT": "Bangladeshi Taka", "PKR": "Pakistani Rupee", "SAR": "Saudi Riyal",
+            "AED": "United Arab Emirates Dirham", "NZD": "New Zealand Dollar", "SGD": "Singapore Dollar",
+            "HKD": "Hong Kong Dollar", "KRW": "South Korean Won", "RUB": "Russian Ruble", "BRL": "Brazilian Real",
+            "MXN": "Mexican Peso", "ZAR": "South African Rand", "EGP": "Egyptian Pound", "NGN": "Nigerian Naira",
+            "PHP": "Philippine Peso", "THB": "Thai Baht", "VND": "Vietnamese Dong", "IDR": "Indonesian Rupiah",
+            "MYR": "Malaysian Ringgit", "SEK": "Swedish Krona", "NOK": "Norwegian Krone", "DKK": "Danish Krone",
+            "PLN": "Polish Zloty", "HUF": "Hungarian Forint", "CZK": "Czech Koruna", "TRY": "Turkish Lira",
+            "ILS": "Israeli New Shekel", "CLP": "Chilean Peso", "COP": "Colombian Peso", "PEN": "Peruvian Sol",
+            "ARS": "Argentine Peso", "UAH": "Ukrainian Hryvnia", "GHS": "Ghanaian Cedi", "KES": "Kenyan Shilling"
+        };
+
+        // Mock exchange rates (for demonstration, if API key is not provided or fails)
+        const mockExchangeRates = {
+            "USD": { "EUR": 0.92, "GBP": 0.79, "JPY": 156.80, "CAD": 1.37, "AUD": 1.51, "CHF": 0.90, "CNY": 7.26, "INR": 83.50, "BDT": 117.00, "PKR": 278.00, "SAR": 3.75, "AED": 3.67, "NZD": 1.64, "SGD": 1.35, "HKD": 7.82, "KRW": 1370.00, "RUB": 89.00, "BRL": 5.15, "MXN": 17.00, "ZAR": 18.50, "EGP": 47.00, "NGN": 1470.00, "PHP": 58.50, "THB": 36.50, "VND": 25400.00, "IDR": 16200.00, "MYR": 4.70, "SEK": 10.50, "NOK": 10.80, "DKK": 6.90, "PLN": 4.00, "HUF": 360.00, "CZK": 23.00, "TRY": 32.00, "ILS": 3.70, "CLP": 930.00, "COP": 3900.00, "PEN": 3.70, "ARS": 900.00, "UAH": 40.00, "GHS": 15.00, "KES": 130.00 },
+            "EUR": { "USD": 1.09, "GBP": 0.86, "JPY": 170.50, "CAD": 1.49, "AUD": 1.64, "CHF": 0.98, "CNY": 7.89, "INR": 90.70, "BDT": 127.00, "PKR": 302.00, "SAR": 4.07, "AED": 3.98, "NZD": 1.78, "SGD": 1.47, "HKD": 8.50, "KRW": 1480.00, "RUB": 96.00, "BRL": 5.60, "MXN": 18.50, "ZAR": 20.00, "EGP": 51.00, "NGN": 1600.00, "PHP": 63.50, "THB": 39.50, "VND": 27600.00, "IDR": 17600.00, "MYR": 5.10, "SEK": 11.40, "NOK": 11.70, "DKK": 7.50, "PLN": 4.35, "HUF": 390.00, "CZK": 25.00, "TRY": 35.00, "ILS": 4.00, "CLP": 1010.00, "COP": 4250.00, "PEN": 4.00, "ARS": 980.00, "UAH": 43.00, "GHS": 16.50, "KES": 141.00 },
+            "BDT": { "USD": 0.0085, "EUR": 0.0078, "GBP": 0.0068, "JPY": 1.33, "CAD": 0.011, "AUD": 0.013, "CHF": 0.0077, "CNY": 0.062, "INR": 0.71, "PKR": 2.38, "SAR": 0.032, "AED": 0.031, "NZD": 0.014, "SGD": 0.011, "HKD": 0.067, "KRW": 11.70, "RUB": 0.76, "BRL": 0.044, "MXN": 0.14, "ZAR": 0.16, "EGP": 0.40, "NGN": 12.50, "PHP": 0.50, "THB": 0.31, "VND": 217.00, "IDR": 138.00, "MYR": 0.040, "SEK": 0.089, "NOK": 0.092, "DKK": 0.054, "PLN": 0.034, "HUF": 3.10, "CZK": 0.20, "TRY": 0.27, "ILS": 0.031, "CLP": 7.90, "COP": 33.00, "PEN": 0.031, "ARS": 7.70, "UAH": 0.34, "GHS": 0.13, "KES": 1.10 }
+        };
+
+        function populateCurrencySelects() {
+            for (const code in currencies) {
+                const optionFrom = document.createElement('option');
+                optionFrom.value = code;
+                optionFrom.textContent = `${code} - ${currencies[code]}`;
+                fromCurrencySelect.appendChild(optionFrom);
+
+                const optionTo = document.createElement('option');
+                optionTo.value = code;
+                optionTo.textContent = `${code} - ${currencies[code]}`;
+                toCurrencySelect.appendChild(optionTo);
+            }
+            // Set default selections
+            fromCurrencySelect.value = "BDT";
+            toCurrencySelect.value = "USD";
+        }
+
+        async function convertCurrency() {
+            const amount = parseFloat(amountInput.value);
+            const fromCurrency = fromCurrencySelect.value;
+            const toCurrency = toCurrencySelect.value;
+
+            if (isNaN(amount) || amount <= 0) {
+                conversionResult.textContent = "Please enter a valid amount.";
+                lastUpdatedInfo.textContent = "";
+                return;
+            }
+
+            if (fromCurrency === toCurrency) {
+                conversionResult.textContent = `${amount.toFixed(2)} ${fromCurrency} = ${amount.toFixed(2)} ${toCurrency}`;
+                lastUpdatedInfo.textContent = "Conversion to same currency.";
+                return;
+            }
+
+            conversionResult.textContent = "Converting...";
+            lastUpdatedInfo.textContent = "";
+
+            // Attempt to fetch real-time rates if API key is provided
+            if (EXCHANGERATE_API_KEY && EXCHANGERATE_API_KEY !== "YOUR_EXCHANGERATE_API_KEY") {
+                try {
+                    const response = await fetch(`https://v6.exchangerate-api.com/v6/${EXCHANGERATE_API_KEY}/pair/${fromCurrency}/${toCurrency}/${amount}`);
+                    const data = await response.json();
+                    if (data.result === 'success') {
+                        conversionResult.textContent = `${amount.toFixed(2)} ${fromCurrency} = ${data.conversion_result.toFixed(2)} ${toCurrency}`;
+                        const date = new Date(data.time_last_update_unix * 1000);
+                        lastUpdatedInfo.textContent = `Rates updated: ${date.toLocaleString()}`;
+                    } else {
+                        conversionResult.textContent = `Error: ${data['error-type'] || 'Unknown API error'}. Using mock data.`;
+                        console.error("ExchangeRate-API Error:", data);
+                        useMockRates(amount, fromCurrency, toCurrency);
+                    }
+                } catch (error) {
+                    console.error("Error fetching currency data:", error);
+                    conversionResult.textContent = "Network error. Using mock data.";
+                    useMockRates(amount, fromCurrency, toCurrency);
+                }
+            } else {
+                // Fallback to mock rates if no API key or placeholder key is used
+                useMockRates(amount, fromCurrency, toCurrency);
+            }
+        }
+
+        function useMockRates(amount, fromCurrency, toCurrency) {
+            let convertedAmount;
+            if (mockExchangeRates[fromCurrency] && mockExchangeRates[fromCurrency][toCurrency]) {
+                convertedAmount = amount * mockExchangeRates[fromCurrency][toCurrency];
+                conversionResult.textContent = `${amount.toFixed(2)} ${fromCurrency} = ${convertedAmount.toFixed(2)} ${toCurrency}`;
+                lastUpdatedInfo.textContent = "Rates from mock data (not real-time).";
+            } else if (mockExchangeRates[toCurrency] && mockExchangeRates[toCurrency][fromCurrency]) {
+                // If direct conversion not found, try inverse
+                convertedAmount = amount / mockExchangeRates[toCurrency][fromCurrency];
+                conversionResult.textContent = `${amount.toFixed(2)} ${fromCurrency} = ${convertedAmount.toFixed(2)} ${toCurrency}`;
+                lastUpdatedInfo.textContent = "Rates from mock data (not real-time).";
+            } else {
+                conversionResult.textContent = "Conversion not available for selected currencies in mock data.";
+                lastUpdatedInfo.textContent = "";
+            }
+        }
+
+        convertCurrencyBtn.addEventListener('click', convertCurrency);
+        swapCurrencyBtn.addEventListener('click', () => {
+            const temp = fromCurrencySelect.value;
+            fromCurrencySelect.value = toCurrencySelect.value;
+            toCurrencySelect.value = temp;
+            convertCurrency(); // Re-convert after swap
+        });
+
+        // Initial population and conversion on load
+        populateCurrencySelects();
+        convertCurrency();
+
+        // Basic Calculator Logic
+        const calculatorOutput = document.getElementById('calculator-output');
+        const calculatorButtons = document.querySelectorAll('.calculator-button');
+
+        let currentOperand = '';
+        let previousOperand = '';
+        let operation = undefined;
+
+        function appendNumber(number) {
+            if (number === '.' && currentOperand.includes('.')) return;
+            currentOperand = currentOperand.toString() + number.toString();
+            updateDisplay();
+        }
+
+        function chooseOperation(op) {
+            if (currentOperand === '' && previousOperand === '') return; // No numbers entered yet
+            if (currentOperand === '' && previousOperand !== '') { // Change operator
+                operation = op;
+                updateDisplay();
+                return;
+            }
+            if (previousOperand !== '') {
+                compute();
+            }
+            operation = op;
+            previousOperand = currentOperand;
+            currentOperand = '';
+            updateDisplay();
+        }
+
+        function compute() {
+            let computation;
+            const prev = parseFloat(previousOperand);
+            const current = parseFloat(currentOperand);
+            if (isNaN(prev) || isNaN(current)) return;
+
+            switch (operation) {
+                case '+':
+                    computation = prev + current;
+                    break;
+                case '-':
+                    computation = prev - current;
+                    break;
+                case '*':
+                    computation = prev * current;
+                    break;
+                case '/':
+                    if (current === 0) {
+                        currentOperand = "Error: Div by 0";
+                        previousOperand = '';
+                        operation = undefined;
+                        updateDisplay();
+                        return;
+                    }
+                    computation = prev / current;
+                    break;
+                default:
+                    return;
+            }
+            currentOperand = computation.toString();
+            operation = undefined;
+            previousOperand = '';
+            updateDisplay();
+        }
+
+        function clearCalculator() {
+            currentOperand = '';
+            previousOperand = '';
+            operation = undefined;
+            updateDisplay();
+        }
+
+        function deleteLastDigit() {
+            currentOperand = currentOperand.toString().slice(0, -1);
+            if (currentOperand === '') {
+                currentOperand = '0'; // Show 0 if empty
+            }
+            updateDisplay();
+        }
+
+        function toggleSign() {
+            if (currentOperand === '' || currentOperand === '0') return;
+            currentOperand = (parseFloat(currentOperand) * -1).toString();
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            calculatorOutput.textContent = currentOperand === '' ? (previousOperand === '' ? '0' : previousOperand) : currentOperand;
+        }
+
+        calculatorButtons.forEach(button => {
+            if (button.dataset.number !== undefined) {
+                if (button.textContent === '+/-') {
+                    button.addEventListener('click', toggleSign);
+                } else {
+                    button.addEventListener('click', () => appendNumber(button.textContent));
+                }
+            } else if (button.dataset.operator !== undefined) {
+                button.addEventListener('click', () => chooseOperation(button.textContent));
+            } else if (button.dataset.equals !== undefined) {
+                button.addEventListener('click', () => compute());
+            } else if (button.dataset.clear !== undefined) {
+                button.addEventListener('click', () => clearCalculator());
+            } else if (button.dataset.delete !== undefined) {
+                button.addEventListener('click', () => deleteLastDigit());
+            }
+        });
+        updateDisplay(); // Initial display
+
+
+        // Web Apps Logic
+
+        // Food Delivery App
+        const foodItemsDisplay = document.getElementById('food-items-display');
+        const foodSearchInput = document.getElementById('food-search-input');
+        const viewCartBtn = document.getElementById('view-cart-btn');
+        const cartItemCount = document.getElementById('cart-item-count');
+        const cartModal = document.getElementById('cart-modal');
+        const closeCartModalBtn = document.getElementById('close-cart-modal-btn');
+        const cartItemsList = document.getElementById('cart-items-list');
+        const cartTotalDisplay = document.getElementById('cart-total');
+
+        const foodItems = [
+            { id: 'pizza1', name: 'Classic Pepperoni Pizza', description: 'A timeless favorite with rich tomato sauce, mozzarella, and spicy pepperoni.', price: 12.99, image: 'https://placehold.co/200x150/FF5733/FFFFFF?text=Pizza' },
+            { id: 'burger1', name: 'Signature Beef Burger', description: 'Juicy Angus beef patty, fresh lettuce, tomato, onion, and our secret sauce on a brioche bun.', price: 9.50, image: 'https://placehold.co/200x150/33FF57/FFFFFF?text=Burger' },
+            { id: 'sushi1', name: 'Assorted Sushi Platter', description: 'A delightful selection of fresh nigiri and maki rolls, perfect for sharing.', price: 24.00, image: 'https://placehold.co/200x150/3357FF/FFFFFF?text=Sushi' },
+            { id: 'pasta1', name: 'Creamy Chicken Alfredo', description: 'Fettuccine pasta tossed in a rich, creamy Alfredo sauce with tender grilled chicken.', price: 15.75, image: 'https://placehold.co/200x150/FFC300/000000?text=Pasta' },
+            { id: 'salad1', name: 'Garden Fresh Salad', description: 'Crisp mixed greens, cherry tomatoes, cucumber, bell peppers, and a light vinaigrette.', price: 8.25, image: 'https://placehold.co/200x150/DAF7A6/000000?text=Salad' },
+            { id: 'tacos1', name: 'Spicy Chicken Tacos', description: 'Soft tortillas filled with seasoned chicken, fresh salsa, and a hint of lime.', price: 10.00, image: 'https://placehold.co/200x150/FF8C00/FFFFFF?text=Tacos' },
+            { id: 'soup1', name: 'Tomato Basil Soup', description: 'Warm and comforting tomato soup, blended with fresh basil and a touch of cream.', price: 6.50, image: 'https://placehold.co/200x150/8A2BE2/FFFFFF?text=Soup' },
+        ];
+
+        let cart = JSON.parse(localStorage.getItem('foodCart')) || [];
+
+        function saveCart() {
+            localStorage.setItem('foodCart', JSON.stringify(cart));
+            updateCartCount();
+        }
+
+        function updateCartCount() {
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartItemCount.textContent = totalItems;
+        }
+
+        function renderFoodItems(filter = '') {
+            foodItemsDisplay.innerHTML = '';
+            const filteredItems = foodItems.filter(item =>
+                item.name.toLowerCase().includes(filter.toLowerCase()) ||
+                item.description.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            if (filteredItems.length === 0) {
+                foodItemsDisplay.innerHTML = '<p class="text-center text-gray-400 col-span-full">No food items found matching your search.</p>';
+                return;
+            }
+
+            filteredItems.forEach(item => {
+                const itemCard = document.createElement('div');
+                itemCard.className = 'bg-gray-700 rounded-lg p-4 shadow-md transform hover:scale-105 transition-transform duration-200';
+                itemCard.innerHTML = `
+                    <img src="${item.image}" alt="${item.name}" class="w-full h-32 object-cover rounded-md mb-3">
+                    <h4 class="text-xl font-semibold mb-1 text-gray-100">${item.name}</h4>
+                    <p class="text-gray-300 text-sm mb-2">${item.description}</p>
+                    <div class="flex justify-between items-center mt-3">
+                        <span class="text-lg font-bold text-red-400">$${item.price.toFixed(2)}</span>
+                        <div class="flex items-center space-x-2">
+                            <button data-item-id="${item.id}" data-action="decrement" class="bg-gray-600 hover:bg-gray-700 text-white w-8 h-8 rounded-full flex items-center justify-center">-</button>
+                            <span id="quantity-${item.id}" class="text-white font-bold">
+                                ${ (cart.find(cartItem => cartItem.id === item.id)?.quantity || 0) }
+                            </span>
+                            <button data-item-id="${item.id}" data-action="increment" class="bg-red-600 hover:bg-red-700 text-white w-8 h-8 rounded-full flex items-center justify-center">+</button>
+                        </div>
+                    </div>
+                `;
+                foodItemsDisplay.appendChild(itemCard);
+            });
+
+            document.querySelectorAll('.add-to-cart-btn, [data-action="increment"], [data-action="decrement"]').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const itemId = e.target.dataset.itemId || e.target.closest('button').dataset.itemId;
+                    const action = e.target.dataset.action;
+                    const itemToAdd = foodItems.find(food => food.id === itemId);
+                    let existingCartItem = cart.find(cartItem => cartItem.id === itemId);
+
+                    if (action === "increment" || e.target.classList.contains('add-to-cart-btn')) {
+                        if (existingCartItem) {
+                            existingCartItem.quantity++;
+                        } else {
+                            cart.push({ ...itemToAdd, quantity: 1 });
+                        }
+                    } else if (action === "decrement") {
+                        if (existingCartItem && existingCartItem.quantity > 0) {
+                            existingCartItem.quantity--;
+                            if (existingCartItem.quantity === 0) {
+                                cart = cart.filter(cartItem => cartItem.id !== itemId);
+                            }
+                        }
+                    }
+                    saveCart();
+                    renderFoodItems(foodSearchInput.value); // Re-render to update quantities on display
+                });
+            });
+        }
+
+        function renderCartItems() {
+            cartItemsList.innerHTML = '';
+            let total = 0;
+
+            if (cart.length === 0) {
+                cartItemsList.innerHTML = '<p class="text-center text-gray-400">Your cart is empty.</p>';
+            } else {
+                cart.forEach(item => {
+                    const cartItemDiv = document.createElement('div');
+                    cartItemDiv.className = 'flex justify-between items-center bg-gray-800 p-3 rounded-md';
+                    cartItemDiv.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <img src="${item.image}" alt="${item.name}" class="w-10 h-10 object-cover rounded-md">
+                            <div>
+                                <span class="text-gray-200 font-semibold">${item.name}</span>
+                                <div class="flex items-center text-sm text-gray-400">
+                                    <button data-item-id="${item.id}" data-action="decrement" class="bg-gray-700 hover:bg-gray-600 text-white w-6 h-6 rounded-full flex items-center justify-center mr-1">-</button>
+                                    <span>${item.quantity}</span>
+                                    <button data-item-id="${item.id}" data-action="increment" class="bg-red-600 hover:bg-red-700 text-white w-6 h-6 rounded-full flex items-center justify-center ml-1">+</button>
+                                    <span class="ml-2">@ $${item.price.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="text-gray-100 font-bold">$${(item.price * item.quantity).toFixed(2)}</span>
+                        <button data-item-id="${item.id}" class="remove-from-cart-btn text-red-500 hover:text-red-700" aria-label="Remove item"><i class="fas fa-trash-alt"></i></button>
+                    `;
+                    cartItemsList.appendChild(cartItemDiv);
+                    total += item.price * item.quantity;
+                });
+            }
+            cartTotalDisplay.textContent = `$${total.toFixed(2)}`;
+
+            document.querySelectorAll('#cart-items-list [data-action="increment"], #cart-items-list [data-action="decrement"], .remove-from-cart-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const itemId = e.target.dataset.itemId || e.target.closest('button').dataset.itemId;
+                    const action = e.target.dataset.action;
+                    let existingCartItem = cart.find(cartItem => cartItem.id === itemId);
+
+                    if (action === "increment") {
+                        if (existingCartItem) existingCartItem.quantity++;
+                    } else if (action === "decrement") {
+                        if (existingCartItem && existingCartItem.quantity > 0) {
+                            existingCartItem.quantity--;
+                            if (existingCartItem.quantity === 0) {
+                                cart = cart.filter(cartItem => cartItem.id !== itemId);
+                            }
+                        }
+                    } else if (e.target.classList.contains('remove-from-cart-btn')) {
+                        cart = cart.filter(cartItem => cartItem.id !== itemId);
+                    }
+                    saveCart();
+                    renderCartItems(); // Re-render cart after modification
+                    renderFoodItems(foodSearchInput.value); // Also update main food display quantities
+                });
+            });
+        }
+
+        foodSearchInput.addEventListener('input', (e) => {
+            renderFoodItems(e.target.value);
+        });
+
+        viewCartBtn.addEventListener('click', () => {
+            renderCartItems();
+            cartModal.classList.remove('hidden');
+        });
+
+        closeCartModalBtn.addEventListener('click', () => {
+            cartModal.classList.add('hidden');
+        });
+        // Close modal if clicking outside content
+        cartModal.addEventListener('click', (e) => {
+            if (e.target === cartModal) {
+                cartModal.classList.add('hidden');
+            }
+        });
+
+
+        // Student Information System
+        const studentSearchInput = document.getElementById('student-search-input');
+        const studentSearchBtn = document.getElementById('student-search-btn');
+        const studentDisplayArea = document.getElementById('student-display-area');
+        const addEditStudentForm = document.getElementById('add-edit-student-form');
+        const studentEditIdInput = document.getElementById('student-edit-id');
+        const studentNameInput = document.getElementById('student-name');
+        const studentIdInput = document.getElementById('student-id');
+        const studentMajorInput = document.getElementById('student-major');
+        const studentGpaInput = document.getElementById('student-gpa');
+        const studentEmailInput = document.getElementById('student-email');
+        const studentMobileInput = document.getElementById('student-mobile'); // New
+        const studentGithubInput = document.getElementById('student-github'); // New
+        const studentFacebookInput = document.getElementById('student-facebook'); // New
+        const studentCoursesInput = document.getElementById('student-courses');
+        const submitStudentBtn = document.getElementById('submit-student-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const sortStudentsSelect = document.getElementById('sort-students');
+        const sortOrderToggle = document.getElementById('sort-order-toggle');
+        const sortIcon = document.getElementById('sort-icon');
+
+        let students = JSON.parse(localStorage.getItem('studentsData')) || [
+            { id: 'S001', name: 'John Doe', major: 'Computer Science', gpa: 3.8, email: 'john.doe@example.com', courses: ['CS101', 'MA205'], mobile: '+1234567890', github: 'johndoe_dev', facebook: 'johndoe.profile' },
+            { id: 'S002', name: 'Jane Smith', major: 'Electrical Engineering', gpa: 3.9, email: 'jane.smith@example.com', courses: ['EE201', 'PH101'], mobile: '+1987654321', github: 'janesmith_eng', facebook: 'jane.smith.official' },
+            { id: 'S003', name: 'Alice Johnson', major: 'Biology', gpa: 3.5, email: 'alice.j@example.com', courses: ['BI101', 'CH101'], mobile: '', github: '', facebook: 'alice.j.bio' },
+            { id: 'S004', name: 'Bob Williams', major: 'Mathematics', gpa: 3.2, email: 'bob.w@example.com', courses: ['MA101', 'PH201'], mobile: '+1122334455', github: 'bob_math', facebook: '' },
+            { id: 'S005', name: 'Emily Davis', major: 'Chemistry', gpa: 3.7, email: 'emily.d@example.com', courses: ['CH201', 'BI201'], mobile: '+1555666777', github: 'emilyd_chem', facebook: 'emily.davis.page' },
+            { id: 'S006', name: 'Michael Brown', major: 'History', gpa: 3.1, email: 'michael.b@example.com', courses: ['HI101', 'EN101'], mobile: '', github: '', facebook: '' }
+        ];
+        let currentSortOrder = 'asc'; // 'asc' or 'desc'
+
+        function saveStudents() {
+            localStorage.setItem('studentsData', JSON.stringify(students));
+        }
+
+        function sortStudents(criteria, order) {
+            return [...students].sort((a, b) => {
+                let valA, valB;
+                // Handle cases where new fields might be undefined for older entries
+                if (criteria === 'gpa') {
+                    valA = a.gpa || 0;
+                    valB = b.gpa || 0;
+                } else if (criteria === 'name') {
+                    valA = a.name ? a.name.toLowerCase() : '';
+                    valB = b.name ? b.name.toLowerCase() : '';
+                } else if (criteria === 'id') {
+                    valA = a.id ? a.id.toLowerCase() : '';
+                    valB = b.id ? b.id.toLowerCase() : '';
+                }
+
+
+                if (valA < valB) return order === 'asc' ? -1 : 1;
+                if (valA > valB) return order === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+
+        function renderStudents(filter = '') {
+            studentDisplayArea.innerHTML = '';
+            let filteredStudents = students.filter(student =>
+                student.name.toLowerCase().includes(filter.toLowerCase()) ||
+                student.id.toLowerCase().includes(filter.toLowerCase()) ||
+                student.major.toLowerCase().includes(filter.toLowerCase()) ||
+                (student.email && student.email.toLowerCase().includes(filter.toLowerCase())) ||
+                (student.mobile && student.mobile.includes(filter)) ||
+                (student.github && student.github.toLowerCase().includes(filter.toLowerCase())) ||
+                (student.facebook && student.facebook.toLowerCase().includes(filter.toLowerCase()))
+            );
+
+            // Apply sorting
+            filteredStudents = sortStudents(sortStudentsSelect.value, currentSortOrder);
+
+
+            if (filteredStudents.length === 0) {
+                studentDisplayArea.innerHTML = '<p class="text-center text-gray-400">No students found matching your search criteria.</p>';
+                return;
+            }
+
+            filteredStudents.forEach(student => {
+                const studentCard = document.createElement('div');
+                studentCard.className = 'bg-gray-700 rounded-lg p-4 shadow-md flex flex-col sm:flex-row justify-between items-start sm:items-center';
+                studentCard.innerHTML = `
+                    <div>
+                        <h4 class="text-xl font-semibold mb-1 text-gray-100">${student.name}</h4>
+                        <p class="text-gray-300 text-sm">Student ID: <span class="font-mono">${student.id}</span></p>
+                        <p class="text-gray-300 text-sm">Major: ${student.major}</p>
+                        <p class="text-gray-300 text-sm">GPA: <span class="font-bold text-red-300">${student.gpa.toFixed(2)}</span></p>
+                        ${student.email ? `<p class="text-gray-300 text-sm">Email: <a href="mailto:${student.email}" class="text-blue-400 hover:underline">${student.email}</a></p>` : ''}
+                        ${student.mobile ? `<p class="text-gray-300 text-sm">Mobile: <a href="tel:${student.mobile}" class="text-blue-400 hover:underline">${student.mobile}</a></p>` : ''}
+                        ${student.github ? `<p class="text-gray-300 text-sm">GitHub: <a href="https://github.com/${student.github}" target="_blank" class="text-blue-400 hover:underline">${student.github}</a></p>` : ''}
+                        ${student.facebook ? `<p class="text-gray-300 text-sm">Facebook: <a href="https://facebook.com/${student.facebook}" target="_blank" class="text-blue-400 hover:underline">${student.facebook}</a></p>` : ''}
+                        ${student.courses && student.courses.length > 0 ? `<p class="text-gray-300 text-sm">Courses: ${student.courses.join(', ')}</p>` : ''}
+                    </div>
+                    <div class="flex space-x-2 mt-3 sm:mt-0">
+                        <button data-student-id="${student.id}" class="edit-student-btn bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md transition-colors" aria-label="Edit Student"><i class="fas fa-edit"></i></button>
+                        <button data-student-id="${student.id}" class="delete-student-btn bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-md transition-colors" aria-label="Delete Student"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+                studentDisplayArea.appendChild(studentCard);
+            });
+
+            document.querySelectorAll('.delete-student-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const studentIdToDelete = e.target.dataset.studentId || e.target.closest('button').dataset.studentId;
+                    students = students.filter(student => student.id !== studentIdToDelete);
+                    saveStudents();
+                    renderStudents(studentSearchInput.value); // Re-render with current filter
+                });
+            });
+
+            document.querySelectorAll('.edit-student-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const studentIdToEdit = e.target.dataset.studentId || e.target.closest('button').dataset.studentId;
+                    const studentToEdit = students.find(s => s.id === studentIdToEdit);
+                    if (studentToEdit) {
+                        studentEditIdInput.value = studentToEdit.id;
+                        studentNameInput.value = studentToEdit.name;
+                        studentIdInput.value = studentToEdit.id;
+                        studentMajorInput.value = studentToEdit.major;
+                        studentGpaInput.value = studentToEdit.gpa;
+                        studentEmailInput.value = studentToEdit.email || '';
+                        studentMobileInput.value = studentToEdit.mobile || ''; // Populate new field
+                        studentGithubInput.value = studentToEdit.github || ''; // Populate new field
+                        studentFacebookInput.value = studentToEdit.facebook || ''; // Populate new field
+                        studentCoursesInput.value = studentToEdit.courses ? studentToEdit.courses.join(', ') : '';
+
+                        studentIdInput.disabled = true; // Prevent changing ID during edit
+                        submitStudentBtn.textContent = 'Update Student';
+                        submitStudentBtn.classList.remove('bg-red-600');
+                        submitStudentBtn.classList.add('bg-green-600');
+                        cancelEditBtn.classList.remove('hidden');
+                        document.getElementById('add-edit-student-form').scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+            });
+        }
+
+        addEditStudentForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = studentEditIdInput.value.trim() || studentIdInput.value.trim();
+            const name = studentNameInput.value.trim();
+            const major = studentMajorInput.value.trim();
+            const gpa = parseFloat(studentGpaInput.value);
+            const email = studentEmailInput.value.trim();
+            const mobile = studentMobileInput.value.trim(); // Get new field
+            const github = studentGithubInput.value.trim(); // Get new field
+            const facebook = studentFacebookInput.value.trim(); // Get new field
+            const courses = studentCoursesInput.value.trim().split(',').map(c => c.trim()).filter(c => c !== '');
+
+            const newStudentData = { id, name, major, gpa, email, mobile, github, facebook, courses }; // Include new fields
+
+            if (studentEditIdInput.value) { // Editing existing student
+                const index = students.findIndex(s => s.id === id);
+                if (index > -1) {
+                    students[index] = newStudentData;
+                }
+            } else { // Adding new student
+                if (students.some(s => s.id === id)) {
+                    console.log('Student ID already exists!');
+                    alert('Student ID already exists. Please use a unique ID.'); // Using alert for simplicity here, but custom modal is preferred.
+                    return;
+                }
+                students.push(newStudentData);
+            }
+            saveStudents();
+            resetStudentForm();
+            renderStudents(studentSearchInput.value); // Re-render with current filter
+        });
+
+        cancelEditBtn.addEventListener('click', resetStudentForm);
+
+        function resetStudentForm() {
+            addEditStudentForm.reset();
+            studentEditIdInput.value = '';
+            studentIdInput.disabled = false;
+            submitStudentBtn.textContent = 'Add Student';
+            submitStudentBtn.classList.remove('bg-green-600');
+            submitStudentBtn.classList.add('bg-red-600');
+            cancelEditBtn.classList.add('hidden');
+            studentMobileInput.value = ''; // Clear new field
+            studentGithubInput.value = ''; // Clear new field
+            studentFacebookInput.value = ''; // Clear new field
+        }
+
+        studentSearchBtn.addEventListener('click', () => {
+            renderStudents(studentSearchInput.value);
+        });
+        studentSearchInput.addEventListener('input', (e) => {
+            renderStudents(e.target.value); // Live search
+        });
+
+        sortStudentsSelect.addEventListener('change', () => {
+            renderStudents(studentSearchInput.value);
+        });
+
+        sortOrderToggle.addEventListener('click', () => {
+            currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            sortIcon.classList.toggle('fa-sort-alpha-down', currentSortOrder === 'asc');
+            sortIcon.classList.toggle('fa-sort-alpha-up', currentSortOrder === 'desc');
+            renderStudents(studentSearchInput.value);
+        });
+
+
+        // Calendar & To-Do List Logic
+        const currentMonthYearDisplay = document.getElementById('current-month-year');
+        const prevMonthBtn = document.getElementById('prev-month-btn');
+        const nextMonthBtn = document.getElementById('next-month-btn');
+        const calendarDaysContainer = document.getElementById('calendar-days');
+        const selectedDateDisplay = document.getElementById('selected-date-display');
+        const todoInput = document.getElementById('todo-input');
+        const addTodoBtn = document.getElementById('add-todo-btn');
+        const todoList = document.getElementById('todo-list');
+
+        let currentCalendarDate = new Date(); // Tracks the month/year currently displayed
+        let selectedDate = new Date(); // Tracks the currently selected day
+
+        // Load tasks from localStorage
+        let tasks = JSON.parse(localStorage.getItem('calendarTasks')) || {};
+
+        function saveTasks() {
+            localStorage.setItem('calendarTasks', JSON.stringify(tasks));
+        }
+
+        function renderCalendar() {
+            calendarDaysContainer.innerHTML = '';
+            currentMonthYearDisplay.textContent = currentCalendarDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth(); // 0-indexed
+
+            // Get first day of the month
+            const firstDayOfMonth = new Date(year, month, 1);
+            // Get last day of the month
+            const lastDayOfMonth = new Date(year, month + 1, 0);
+            const numDaysInMonth = lastDayOfMonth.getDate();
+
+            // Calculate starting day of the week (0 = Sunday, 6 = Saturday)
+            const startDayOfWeek = firstDayOfMonth.getDay();
+
+            // Render empty cells for days before the 1st of the month
+            for (let i = 0; i < startDayOfWeek; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.classList.add('calendar-day', 'other-month');
+                calendarDaysContainer.appendChild(emptyDay);
+            }
+
+            // Render days of the current month
+            for (let day = 1; day <= numDaysInMonth; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.classList.add('calendar-day', 'current-month');
+                dayElement.textContent = day;
+                dayElement.dataset.date = `${year}-${month + 1}-${day}`; // Store date as YYYY-M-D
+
+                // Add tasks to the day element
+                const dateKey = dayElement.dataset.date;
+                if (tasks[dateKey] && tasks[dateKey].length > 0) {
+                    dayElement.classList.add('has-tasks');
+                    // Create a container for tasks to prevent text overflow issues with day number
+                    const taskContainer = document.createElement('div');
+                    taskContainer.className = 'flex flex-col items-center w-full mt-1';
+                    tasks[dateKey].slice(0, 2).forEach(taskText => { // Show max 2 tasks
+                        const taskSpan = document.createElement('span');
+                        taskSpan.classList.add('task-item');
+                        taskSpan.textContent = taskText;
+                        taskContainer.appendChild(taskSpan);
+                    });
+                    if (tasks[dateKey].length > 2) {
+                        const moreSpan = document.createElement('span');
+                        moreSpan.classList.add('task-item', 'font-bold');
+                        moreSpan.textContent = `+${tasks[dateKey].length - 2} more`;
+                        taskContainer.appendChild(moreSpan);
+                    }
+                    dayElement.appendChild(taskContainer);
+                }
+
+                // Highlight selected date
+                if (selectedDate.getFullYear() === year &&
+                    selectedDate.getMonth() === month &&
+                    selectedDate.getDate() === day) {
+                    dayElement.classList.add('selected');
+                }
+
+                dayElement.addEventListener('click', () => {
+                    selectedDate = new Date(year, month, day);
+                    renderCalendar(); // Re-render to update selected day highlight
+                    renderTodoList();
+                });
+                calendarDaysContainer.appendChild(dayElement);
+            }
+
+            // Render empty cells for days after the last day of the month (to fill the grid)
+            const totalCells = startDayOfWeek + numDaysInMonth;
+            // Calculate remaining cells to fill up to 6 rows (42 cells total)
+            const cellsToFill = totalCells <= 35 ? (35 - totalCells) : (42 - totalCells);
+            for (let i = 0; i < cellsToFill; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.classList.add('calendar-day', 'other-month');
+                calendarDaysContainer.appendChild(emptyDay);
+            }
+
+            renderTodoList(); // Always render todo list for the currently selected date after calendar update
+        }
+
+        function renderTodoList() {
+            todoList.innerHTML = '';
+            selectedDateDisplay.textContent = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const dateKey = `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`;
+
+            if (tasks[dateKey] && tasks[dateKey].length > 0) {
+                tasks[dateKey].forEach((taskText, index) => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'flex justify-between items-center bg-gray-700 p-3 rounded-md';
+                    listItem.innerHTML = `
+                        <span class="text-gray-200">${taskText}</span>
+                        <button data-task-index="${index}" data-date-key="${dateKey}" class="remove-todo-btn text-red-500 hover:text-red-700" aria-label="Remove task"><i class="fas fa-trash-alt"></i></button>
+                    `;
+                    todoList.appendChild(listItem);
+                });
+            } else {
+                todoList.innerHTML = '<li class="text-gray-400 text-center p-3">No tasks for this date.</li>';
+            }
+
+            document.querySelectorAll('.remove-todo-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const taskIndex = parseInt(e.target.dataset.taskIndex || e.target.closest('button').dataset.taskIndex);
+                    const dateKeyToRemove = e.target.dataset.dateKey || e.target.closest('button').dataset.dateKey;
+
+                    if (tasks[dateKeyToRemove]) {
+                        tasks[dateKeyToRemove].splice(taskIndex, 1);
+                        if (tasks[dateKeyToRemove].length === 0) {
+                            delete tasks[dateKeyToRemove]; // Remove empty array
+                        }
+                        saveTasks();
+                        renderCalendar(); // Re-render calendar to update task indicators
+                        renderTodoList(); // Re-render todo list
+                    }
+                });
+            });
+        }
+
+        addTodoBtn.addEventListener('click', () => {
+            const taskText = todoInput.value.trim();
+            if (taskText) {
+                const dateKey = `${selectedDate.getFullYear()}-${selectedDate.getMonth() + 1}-${selectedDate.getDate()}`;
+                if (!tasks[dateKey]) {
+                    tasks[dateKey] = [];
+                }
+                tasks[dateKey].push(taskText);
+                saveTasks();
+                todoInput.value = '';
+                renderCalendar(); // Re-render calendar to show new task indicator
+                renderTodoList();
+            }
+        });
+
+        prevMonthBtn.addEventListener('click', () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+            renderCalendar();
+        });
+
+        nextMonthBtn.addEventListener('click', () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        // AI Image Generator Logic
+        const aiPromptInput = document.getElementById('ai-prompt-input');
+        const generateAiImageBtn = document.getElementById('generate-ai-image-btn');
+        const aiImageDisplay = document.getElementById('ai-image-display');
+
+        generateAiImageBtn.addEventListener('click', async () => {
+            const prompt = aiPromptInput.value.trim();
+            if (!prompt) {
+                aiImageDisplay.innerHTML = '<p class="text-red-400">Please enter a prompt.</p>';
+                return;
+            }
+
+            aiImageDisplay.innerHTML = '<div class="loading-spinner"></div><p class="text-gray-400 mt-4">Generating image...</p>';
+
+            try {
+                const payload = { instances: { prompt: prompt }, parameters: { "sampleCount": 1} };
+                const apiKey = ""; // Canvas will automatically provide this in runtime
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                    const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                    aiImageDisplay.innerHTML = `<img src="${imageUrl}" alt="Generated AI Image for: ${prompt}">`;
+                } else {
+                    aiImageDisplay.innerHTML = '<p class="text-red-400">Failed to generate image. Please try a different prompt or check API configuration.</p>';
+                    console.error("AI Image Generation Error:", result);
+                }
+            } catch (error) {
+                aiImageDisplay.innerHTML = '<p class="text-red-400">An error occurred during image generation. Check console for details.</p>';
+                console.error("Fetch Error:", error);
+            }
+        });
+
+        // Documents & Files Logic
+        const localFileInput = document.getElementById('local-file-input');
+        const localFileInfo = document.getElementById('local-file-info');
+
+        localFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                localFileInfo.textContent = `Selected File: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+            } else {
+                localFileInfo.textContent = 'No file selected.';
+            }
+        });
+
+
+        // Initialize all components on window load
+        window.onload = function() {
+            initThreeJS();
+            animate(); // Start Three.js animation loop
+
+            // Render existing media items on load
+            renderMediaItems();
+
+            // Initialize Bouncing Ball game animation
+            for(let i = 0; i < numBouncingBalls; i++) {
+                createBouncingBall();
+            }
+            drawBouncingBalls();
+            requestAnimationFrame(updateBouncingBalls);
+
+            // Initialize Puzzle Game
+            // createTiles is called on puzzleImage.onload
+            // If image is already loaded (cached), call it directly
+            if (puzzleImage.complete) {
+                createTiles();
+            }
+
+            // Initialize Food Delivery App
+            renderFoodItems();
+            updateCartCount();
+
+            // Initialize Student Information System
+            renderStudents();
+
+            // Initialize Calendar & To-Do List
+            renderCalendar(); // Initial render of the calendar
+
+            // Trigger fade-in animation for sections
+            const sections = document.querySelectorAll('main section');
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.1
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('fade-in-up');
+                        observer.unobserve(entry.target); // Stop observing once animated
+                    }
+                });
+            }, observerOptions);
+
+            sections.forEach(section => {
+                observer.observe(section);
+            });
+        };
+    </script>
+</body>
+</html>
